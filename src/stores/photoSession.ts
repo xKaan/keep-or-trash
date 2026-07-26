@@ -1,32 +1,51 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { PhotoInfo, Decision, HistoryEntry } from '../types'
+import type { PhotoInfo, Decision } from '../types'
 import { getFolderHistory, saveFolderHistory, addRecentFolder } from '../lib/persistence'
 
 export const usePhotoSession = defineStore('photoSession', () => {
   const folder = ref('')
   const photos = ref<PhotoInfo[]>([])
   const index = ref(0)
+  const decisions = ref<Record<string, Decision>>({})
+  const history = ref<string[]>([])
   const initialReviewed = ref<string[]>([])
-  const sessionHistory = ref<HistoryEntry[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
   const currentSrc = ref<string | null>(null)
+  const thumbnails = ref<Record<string, string>>({})
 
   const currentPhoto = computed<PhotoInfo | null>(() => photos.value[index.value] ?? null)
   const total = computed(() => photos.value.length)
-  const isDone = computed(() => index.value >= photos.value.length)
-  const progress = computed(() => `${Math.min(index.value + 1, total.value)}/${total.value}`)
-  const canUndo = computed(() => sessionHistory.value.length > 0)
+  const decidedCount = computed(() => history.value.length)
+  const keptCount = computed(
+    () => Object.values(decisions.value).filter((d) => d === 'keep').length,
+  )
+  const trashedCount = computed(
+    () => Object.values(decisions.value).filter((d) => d === 'trash').length,
+  )
+  const isDone = computed(() => total.value > 0 && decidedCount.value >= total.value)
+  const progress = computed(() => `${Math.min(index.value + 1, total.value)} / ${total.value}`)
+  const canUndo = computed(() => history.value.length > 0)
+  const currentDecision = computed<Decision | null>(() =>
+    currentPhoto.value ? (decisions.value[currentPhoto.value.name] ?? null) : null,
+  )
 
   watch(
     currentPhoto,
     async (photo) => {
       currentSrc.value = null
       if (!photo) return
+      const cached = thumbnails.value[photo.name]
+      if (cached) {
+        currentSrc.value = cached
+        return
+      }
       try {
-        currentSrc.value = await invoke<string>('read_photo', { path: photo.path })
+        const src = await invoke<string>('read_photo', { path: photo.path })
+        thumbnails.value[photo.name] = src
+        if (currentPhoto.value?.name === photo.name) currentSrc.value = src
       } catch (e) {
         error.value = String(e)
       }
@@ -34,18 +53,31 @@ export const usePhotoSession = defineStore('photoSession', () => {
     { immediate: true },
   )
 
+  async function loadThumbnail(name: string) {
+    if (thumbnails.value[name]) return
+    const photo = photos.value.find((p) => p.name === name)
+    if (!photo) return
+    try {
+      thumbnails.value[name] = await invoke<string>('read_photo', { path: photo.path })
+    } catch {
+      thumbnails.value[name] = ''
+    }
+  }
+
   async function loadFolder(targetFolder: string) {
     loading.value = true
     error.value = null
-    sessionHistory.value = []
+    decisions.value = {}
+    history.value = []
+    thumbnails.value = {}
     try {
       const all = await invoke<PhotoInfo[]>('list_photos', { folder: targetFolder })
-      const history = await getFolderHistory(targetFolder)
-      const remaining = all.filter((p) => !history.reviewed.includes(p.name))
+      const folderHistory = await getFolderHistory(targetFolder)
+      const remaining = all.filter((p) => !folderHistory.reviewed.includes(p.name))
       folder.value = targetFolder
       photos.value = remaining
-      initialReviewed.value = history.reviewed
-      index.value = Math.min(history.lastIndex, remaining.length)
+      initialReviewed.value = folderHistory.reviewed
+      index.value = Math.min(folderHistory.lastIndex, Math.max(0, remaining.length - 1))
       await addRecentFolder(targetFolder)
     } catch (e) {
       error.value = String(e)
@@ -55,22 +87,34 @@ export const usePhotoSession = defineStore('photoSession', () => {
   }
 
   async function persist() {
-    const keptThisSession = sessionHistory.value
-      .filter((h) => h.action === 'keep')
-      .map((h) => h.filename)
-    const reviewed = [...initialReviewed.value, ...keptThisSession]
-    await saveFolderHistory(folder.value, { reviewed, lastIndex: index.value })
+    const kept = history.value.filter((name) => decisions.value[name] === 'keep')
+    await saveFolderHistory(folder.value, {
+      reviewed: [...initialReviewed.value, ...kept],
+      lastIndex: index.value,
+    })
+  }
+
+  function nextUndecidedFrom(start: number): number | null {
+    for (let i = start; i < photos.value.length; i += 1) {
+      if (!decisions.value[photos.value[i].name]) return i
+    }
+    for (let i = 0; i < start; i += 1) {
+      if (!decisions.value[photos.value[i].name]) return i
+    }
+    return null
   }
 
   async function decide(action: Decision) {
     const photo = currentPhoto.value
-    if (!photo) return
+    if (!photo || decisions.value[photo.name]) return
     try {
       if (action === 'trash') {
         await invoke('move_to_trash', { folder: folder.value, filename: photo.name })
       }
-      sessionHistory.value.push({ filename: photo.name, action })
-      index.value += 1
+      decisions.value[photo.name] = action
+      history.value.push(photo.name)
+      const next = nextUndecidedFrom(index.value + 1)
+      if (next !== null) index.value = next
       await persist()
     } catch (e) {
       error.value = String(e)
@@ -78,35 +122,59 @@ export const usePhotoSession = defineStore('photoSession', () => {
   }
 
   async function undo() {
-    const last = sessionHistory.value[sessionHistory.value.length - 1]
-    if (!last) return
-    if (last.action === 'trash') {
+    const name = history.value[history.value.length - 1]
+    if (!name) return
+    if (decisions.value[name] === 'trash') {
       try {
-        await invoke('undo_move', { folder: folder.value, filename: last.filename })
+        await invoke('undo_move', { folder: folder.value, filename: name })
       } catch (e) {
         error.value = String(e)
         return
       }
     }
-    sessionHistory.value.pop()
-    index.value = Math.max(0, index.value - 1)
+    history.value.pop()
+    delete decisions.value[name]
+    const position = photos.value.findIndex((p) => p.name === name)
+    if (position !== -1) index.value = position
     await persist()
+  }
+
+  function selectPhoto(target: number) {
+    if (target >= 0 && target < photos.value.length) index.value = target
+  }
+
+  function goPrev() {
+    selectPhoto(index.value - 1)
+  }
+
+  function goNext() {
+    selectPhoto(index.value + 1)
   }
 
   return {
     folder,
     photos,
     index,
+    decisions,
     loading,
     error,
     currentSrc,
+    thumbnails,
     currentPhoto,
+    currentDecision,
     total,
+    decidedCount,
+    keptCount,
+    trashedCount,
     isDone,
     progress,
     canUndo,
     loadFolder,
+    loadThumbnail,
     decide,
     undo,
+    selectPhoto,
+    goPrev,
+    goNext,
   }
 })

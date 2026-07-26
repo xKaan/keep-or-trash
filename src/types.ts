@@ -5,8 +5,3 @@ export interface PhotoInfo {
 }
 
 export type Decision = 'keep' | 'trash'
-
-export interface HistoryEntry {
-  filename: string
-  action: Decision
-}

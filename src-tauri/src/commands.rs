@@ -25,10 +25,20 @@ fn trash_dir(folder: &str) -> PathBuf {
     Path::new(folder).join(TRASH_DIR)
 }
 
-#[tauri::command(async)]
-pub fn list_photos(folder: String) -> Result<Vec<PhotoInfo>, String> {
+fn plain_file_name(filename: &str) -> Result<&str, String> {
+    let is_plain = Path::new(filename)
+        .file_name()
+        .is_some_and(|name| name == filename);
+    if is_plain {
+        Ok(filename)
+    } else {
+        Err(format!("Nom de fichier invalide : {filename}"))
+    }
+}
+
+fn read_photos(dir: &Path) -> Result<Vec<PhotoInfo>, String> {
     let entries =
-        fs::read_dir(&folder).map_err(|e| format!("Impossible de lire le dossier : {e}"))?;
+        fs::read_dir(dir).map_err(|e| format!("Impossible de lire le dossier : {e}"))?;
 
     let mut photos: Vec<PhotoInfo> = entries
         .filter_map(|entry| {
@@ -52,6 +62,33 @@ pub fn list_photos(folder: String) -> Result<Vec<PhotoInfo>, String> {
 
     photos.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(photos)
+}
+
+#[tauri::command(async)]
+pub fn list_photos(folder: String) -> Result<Vec<PhotoInfo>, String> {
+    read_photos(Path::new(&folder))
+}
+
+#[tauri::command(async)]
+pub fn list_trash(folder: String) -> Result<Vec<PhotoInfo>, String> {
+    let trash = trash_dir(&folder);
+    if !trash.is_dir() {
+        return Ok(Vec::new());
+    }
+    read_photos(&trash)
+}
+
+#[tauri::command(async)]
+pub fn delete_permanently(folder: String, filenames: Vec<String>) -> Result<usize, String> {
+    let trash = trash_dir(&folder);
+    let mut deleted = 0;
+    for filename in &filenames {
+        let name = plain_file_name(filename)?;
+        fs::remove_file(trash.join(name))
+            .map_err(|e| format!("Impossible de supprimer {name} : {e}"))?;
+        deleted += 1;
+    }
+    Ok(deleted)
 }
 
 #[tauri::command]
@@ -186,6 +223,69 @@ mod tests {
 
         assert!(dir.path().join("photo.jpg").exists());
         assert!(!dir.path().join(TRASH_DIR).join("photo.jpg").exists());
+    }
+
+    #[test]
+    fn list_trash_returns_photos_from_the_trash_subfolder() {
+        let dir = tempdir().unwrap();
+        create_file(dir.path(), "kept.jpg");
+        create_in_trash(dir.path(), "b.png");
+        create_in_trash(dir.path(), "a.jpg");
+
+        let result = list_trash(s(dir.path())).unwrap();
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].name, "a.jpg");
+        assert_eq!(result[1].name, "b.png");
+    }
+
+    #[test]
+    fn list_trash_is_empty_when_no_trash_folder_exists() {
+        let dir = tempdir().unwrap();
+        create_file(dir.path(), "kept.jpg");
+
+        let result = list_trash(s(dir.path())).unwrap();
+
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn delete_permanently_removes_the_named_files_and_counts_them() {
+        let dir = tempdir().unwrap();
+        create_in_trash(dir.path(), "a.jpg");
+        create_in_trash(dir.path(), "b.jpg");
+        create_in_trash(dir.path(), "c.jpg");
+
+        let deleted =
+            delete_permanently(s(dir.path()), vec!["a.jpg".to_string(), "c.jpg".to_string()])
+                .unwrap();
+
+        assert_eq!(deleted, 2);
+        assert!(!dir.path().join(TRASH_DIR).join("a.jpg").exists());
+        assert!(dir.path().join(TRASH_DIR).join("b.jpg").exists());
+        assert!(!dir.path().join(TRASH_DIR).join("c.jpg").exists());
+    }
+
+    #[test]
+    fn delete_permanently_never_escapes_the_trash_folder() {
+        let dir = tempdir().unwrap();
+        create_file(dir.path(), "precious.jpg");
+        create_in_trash(dir.path(), "a.jpg");
+
+        let result = delete_permanently(s(dir.path()), vec!["../precious.jpg".to_string()]);
+
+        assert!(result.is_err());
+        assert!(dir.path().join("precious.jpg").exists());
+    }
+
+    #[test]
+    fn delete_permanently_reports_a_missing_file() {
+        let dir = tempdir().unwrap();
+        create_in_trash(dir.path(), "a.jpg");
+
+        let result = delete_permanently(s(dir.path()), vec!["ghost.jpg".to_string()]);
+
+        assert!(result.is_err());
     }
 
     #[test]

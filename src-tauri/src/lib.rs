@@ -7,6 +7,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::list_photos,
+            commands::list_trash,
+            commands::delete_permanently,
             commands::move_to_trash,
             commands::undo_move,
             commands::read_photo,
