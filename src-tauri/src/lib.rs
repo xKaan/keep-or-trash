@@ -12,6 +12,7 @@ pub fn run() {
             commands::move_to_trash,
             commands::undo_move,
             commands::read_photo,
+            commands::read_thumbnail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,6 +1,8 @@
 use base64::{engine::general_purpose, Engine as _};
+use image::{DynamicImage, ImageFormat};
 use serde::Serialize;
 use std::fs;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
 #[derive(Serialize)]
@@ -11,6 +13,7 @@ pub struct PhotoInfo {
 }
 
 const TRASH_DIR: &str = "trash";
+const THUMB_MAX_EDGE: u32 = 400;
 
 fn mime_for(path: &Path) -> Option<&'static str> {
     match path.extension()?.to_str()?.to_lowercase().as_str() {
@@ -37,8 +40,7 @@ fn plain_file_name(filename: &str) -> Result<&str, String> {
 }
 
 fn read_photos(dir: &Path) -> Result<Vec<PhotoInfo>, String> {
-    let entries =
-        fs::read_dir(dir).map_err(|e| format!("Impossible de lire le dossier : {e}"))?;
+    let entries = fs::read_dir(dir).map_err(|e| format!("Impossible de lire le dossier : {e}"))?;
 
     let mut photos: Vec<PhotoInfo> = entries
         .filter_map(|entry| {
@@ -113,7 +115,10 @@ pub fn undo_move(folder: String, filename: String) -> Result<(), String> {
 
 fn unique_destination(dir: &Path, filename: &str) -> PathBuf {
     let path = Path::new(filename);
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or(filename);
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(filename);
     let suffix = path
         .extension()
         .and_then(|e| e.to_str())
@@ -129,26 +134,58 @@ fn unique_destination(dir: &Path, filename: &str) -> PathBuf {
     candidate
 }
 
+fn unsupported_format(path: &Path) -> String {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default();
+    format!("Format non supporté : {ext}")
+}
+
+fn data_url(mime: &str, bytes: &[u8]) -> String {
+    let mut url = String::with_capacity(13 + mime.len() + bytes.len().div_ceil(3) * 4);
+    url.push_str("data:");
+    url.push_str(mime);
+    url.push_str(";base64,");
+    general_purpose::STANDARD.encode_string(bytes, &mut url);
+    url
+}
+
 #[tauri::command(async)]
 pub fn read_photo(path: String) -> Result<String, String> {
     let path = Path::new(&path);
-    let mime = mime_for(path).ok_or_else(|| {
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.to_lowercase())
-            .unwrap_or_default();
-        format!("Format non supporté : {ext}")
-    })?;
-
+    let mime = mime_for(path).ok_or_else(|| unsupported_format(path))?;
     let bytes = fs::read(path).map_err(|e| format!("Impossible de lire le fichier : {e}"))?;
+    Ok(data_url(mime, &bytes))
+}
 
-    let mut data_url = String::with_capacity(13 + mime.len() + bytes.len().div_ceil(3) * 4);
-    data_url.push_str("data:");
-    data_url.push_str(mime);
-    data_url.push_str(";base64,");
-    general_purpose::STANDARD.encode_string(&bytes, &mut data_url);
-    Ok(data_url)
+#[tauri::command(async)]
+pub fn read_thumbnail(path: String) -> Result<String, String> {
+    let path = Path::new(&path);
+    mime_for(path).ok_or_else(|| unsupported_format(path))?;
+
+    let source = image::ImageReader::open(path)
+        .map_err(|e| format!("Impossible de lire le fichier : {e}"))?
+        .with_guessed_format()
+        .map_err(|e| format!("Impossible de lire le fichier : {e}"))?
+        .decode()
+        .map_err(|e| format!("Image illisible : {e}"))?;
+
+    let longest_edge = source.width().max(source.height());
+    let scaled = if longest_edge > THUMB_MAX_EDGE {
+        source.thumbnail(THUMB_MAX_EDGE, THUMB_MAX_EDGE)
+    } else {
+        source
+    };
+    let thumb = DynamicImage::ImageRgb8(scaled.to_rgb8());
+
+    let mut encoded = Cursor::new(Vec::new());
+    thumb
+        .write_to(&mut encoded, ImageFormat::Jpeg)
+        .map_err(|e| format!("Impossible de générer la miniature : {e}"))?;
+
+    Ok(data_url("image/jpeg", &encoded.into_inner()))
 }
 
 #[cfg(test)]
@@ -163,6 +200,14 @@ mod tests {
     fn create_file(dir: &Path, name: &str) -> PathBuf {
         let path = dir.join(name);
         fs::write(&path, b"fake image data").unwrap();
+        path
+    }
+
+    fn create_image(dir: &Path, name: &str, width: u32, height: u32) -> PathBuf {
+        let path = dir.join(name);
+        DynamicImage::ImageRgb8(image::RgbImage::new(width, height))
+            .save(&path)
+            .unwrap();
         path
     }
 
@@ -256,9 +301,11 @@ mod tests {
         create_in_trash(dir.path(), "b.jpg");
         create_in_trash(dir.path(), "c.jpg");
 
-        let deleted =
-            delete_permanently(s(dir.path()), vec!["a.jpg".to_string(), "c.jpg".to_string()])
-                .unwrap();
+        let deleted = delete_permanently(
+            s(dir.path()),
+            vec!["a.jpg".to_string(), "c.jpg".to_string()],
+        )
+        .unwrap();
 
         assert_eq!(deleted, 2);
         assert!(!dir.path().join(TRASH_DIR).join("a.jpg").exists());
@@ -304,6 +351,58 @@ mod tests {
         let notes = create_file(dir.path(), "notes.txt");
 
         let result = read_photo(s(&notes));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn read_thumbnail_downscales_to_a_small_jpeg_data_url() {
+        let dir = tempdir().unwrap();
+        let photo = create_image(dir.path(), "big.png", 2400, 1800);
+
+        let thumb = read_thumbnail(s(&photo)).unwrap();
+        let full = read_photo(s(&photo)).unwrap();
+
+        assert!(thumb.starts_with("data:image/jpeg;base64,"));
+        assert!(thumb.len() < full.len());
+    }
+
+    #[test]
+    fn read_thumbnail_fits_the_longest_edge_and_keeps_the_aspect_ratio() {
+        let dir = tempdir().unwrap();
+        let photo = create_image(dir.path(), "wide.png", 2400, 1200);
+
+        let thumb = read_thumbnail(s(&photo)).unwrap();
+        let bytes = general_purpose::STANDARD
+            .decode(thumb.trim_start_matches("data:image/jpeg;base64,"))
+            .unwrap();
+        let decoded = image::load_from_memory(&bytes).unwrap();
+
+        assert_eq!(decoded.width(), THUMB_MAX_EDGE);
+        assert_eq!(decoded.height(), THUMB_MAX_EDGE / 2);
+    }
+
+    #[test]
+    fn read_thumbnail_does_not_upscale_a_small_image() {
+        let dir = tempdir().unwrap();
+        let photo = create_image(dir.path(), "tiny.png", 80, 60);
+
+        let thumb = read_thumbnail(s(&photo)).unwrap();
+        let bytes = general_purpose::STANDARD
+            .decode(thumb.trim_start_matches("data:image/jpeg;base64,"))
+            .unwrap();
+        let decoded = image::load_from_memory(&bytes).unwrap();
+
+        assert_eq!(decoded.width(), 80);
+        assert_eq!(decoded.height(), 60);
+    }
+
+    #[test]
+    fn read_thumbnail_rejects_a_file_that_is_not_an_image() {
+        let dir = tempdir().unwrap();
+        let fake = create_file(dir.path(), "fake.jpg");
+
+        let result = read_thumbnail(s(&fake));
 
         assert!(result.is_err());
     }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import type { Decision } from '../types'
 import AppIcon from './AppIcon.vue'
 
@@ -30,6 +30,13 @@ onMounted(() => {
   if (root.value) observer.observe(root.value)
 })
 
+watch(
+  () => props.active,
+  (active) => {
+    if (active) root.value?.scrollIntoView({ block: 'nearest' })
+  },
+)
+
 onUnmounted(() => observer?.disconnect())
 </script>
 
@@ -43,7 +50,7 @@ onUnmounted(() => observer?.disconnect())
     @click="emit('select')"
   >
     <div class="thumb-frame">
-      <img v-if="src" :src="src" :alt="name" class="thumb-img" />
+      <img v-if="src" :src="src" :alt="name" class="thumb-img" decoding="async" />
       <div v-else class="thumb-placeholder"></div>
 
       <span v-if="decision === 'keep'" class="thumb-badge thumb-badge-keep">
@@ -64,6 +71,8 @@ onUnmounted(() => observer?.disconnect())
   cursor: pointer;
   display: block;
   border-radius: var(--radius-md);
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--thumb-intrinsic-height, 140px);
 }
 
 .thumb:focus-visible {

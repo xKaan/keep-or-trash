@@ -256,6 +256,7 @@ onMounted(() => trash.load(props.folder))
 }
 
 .trash-grid {
+  --thumb-intrinsic-height: 143px;
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);

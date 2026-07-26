@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import type { PhotoInfo } from '../types'
+import { queued } from '../lib/taskQueue'
 
 export const useTrashSession = defineStore('trashSession', () => {
   const folder = ref('')
@@ -33,11 +34,14 @@ export const useTrashSession = defineStore('trashSession', () => {
   }
 
   async function loadThumbnail(name: string) {
-    if (thumbnails.value[name]) return
+    if (thumbnails.value[name] !== undefined) return
     const photo = photos.value.find((p) => p.name === name)
     if (!photo) return
+    thumbnails.value[name] = ''
     try {
-      thumbnails.value[name] = await invoke<string>('read_photo', { path: photo.path })
+      thumbnails.value[name] = await queued(() =>
+        invoke<string>('read_thumbnail', { path: photo.path }),
+      )
     } catch {
       thumbnails.value[name] = ''
     }

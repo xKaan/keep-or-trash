@@ -35,7 +35,8 @@ beforeEach(() => {
   mockedGetFolderHistory.mockResolvedValue({ reviewed: [], lastIndex: 0 })
   mockedInvoke.mockImplementation(async (cmd: string) => {
     if (cmd === 'list_photos') return PHOTOS
-    if (cmd === 'read_photo') return 'data:image/jpeg;base64,fake'
+    if (cmd === 'read_photo') return 'data:image/jpeg;base64,full'
+    if (cmd === 'read_thumbnail') return 'data:image/jpeg;base64,thumb'
     return null
   })
 })
@@ -75,7 +76,7 @@ describe('usePhotoSession — loading', () => {
     await nextTick()
 
     expect(mockedInvoke).toHaveBeenCalledWith('read_photo', { path: '/photos/a.jpg' })
-    expect(session.currentSrc).toBe('data:image/jpeg;base64,fake')
+    expect(session.currentSrc).toBe('data:image/jpeg;base64,full')
   })
 })
 
@@ -233,25 +234,61 @@ describe('usePhotoSession — navigation', () => {
   })
 })
 
+function callsTo(command: string) {
+  return mockedInvoke.mock.calls.filter((c) => c[0] === command).length
+}
+
 describe('usePhotoSession — thumbnails', () => {
-  it('caches a thumbnail and does not re-read it', async () => {
-    const session = await loadedSession()
-    await nextTick()
-    const callsBefore = mockedInvoke.mock.calls.filter((c) => c[0] === 'read_photo').length
-
-    await session.loadThumbnail('a.jpg')
-
-    const callsAfter = mockedInvoke.mock.calls.filter((c) => c[0] === 'read_photo').length
-    expect(callsAfter).toBe(callsBefore)
-    expect(session.thumbnails['a.jpg']).toBe('data:image/jpeg;base64,fake')
-  })
-
-  it('loads a thumbnail for a photo that is not the current one', async () => {
+  it('reads a downscaled thumbnail rather than the full image', async () => {
     const session = await loadedSession()
 
     await session.loadThumbnail('c.jpg')
 
-    expect(mockedInvoke).toHaveBeenCalledWith('read_photo', { path: '/photos/c.jpg' })
-    expect(session.thumbnails['c.jpg']).toBe('data:image/jpeg;base64,fake')
+    expect(mockedInvoke).toHaveBeenCalledWith('read_thumbnail', { path: '/photos/c.jpg' })
+    expect(mockedInvoke).not.toHaveBeenCalledWith('read_photo', { path: '/photos/c.jpg' })
+    expect(session.thumbnails['c.jpg']).toBe('data:image/jpeg;base64,thumb')
+  })
+
+  it('caches a thumbnail and does not re-read it', async () => {
+    const session = await loadedSession()
+    await session.loadThumbnail('c.jpg')
+    const callsBefore = callsTo('read_thumbnail')
+
+    await session.loadThumbnail('c.jpg')
+
+    expect(callsTo('read_thumbnail')).toBe(callsBefore)
+  })
+
+  it('does not read the same thumbnail twice when asked concurrently', async () => {
+    const session = await loadedSession()
+
+    await Promise.all([session.loadThumbnail('c.jpg'), session.loadThumbnail('c.jpg')])
+
+    expect(callsTo('read_thumbnail')).toBe(1)
+  })
+})
+
+describe('usePhotoSession — full image cache', () => {
+  it('prefetches the neighbouring photos', async () => {
+    const session = await loadedSession()
+    await nextTick()
+    await Promise.resolve()
+
+    expect(mockedInvoke).toHaveBeenCalledWith('read_photo', { path: '/photos/b.jpg' })
+    expect(session.currentPhoto?.name).toBe('a.jpg')
+  })
+
+  it('reuses a cached full image when navigating back', async () => {
+    const session = await loadedSession()
+    await nextTick()
+    session.goNext()
+    await nextTick()
+    const callsBefore = callsTo('read_photo')
+
+    session.goPrev()
+    await nextTick()
+
+    expect(callsTo('read_photo')).toBe(callsBefore)
+    expect(session.currentSrc).toBe('data:image/jpeg;base64,full')
   })
 })

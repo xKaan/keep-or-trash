@@ -3,6 +3,9 @@ import { ref, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import type { PhotoInfo, Decision } from '../types'
 import { getFolderHistory, saveFolderHistory, addRecentFolder } from '../lib/persistence'
+import { queued } from '../lib/taskQueue'
+
+const FULL_CACHE_SIZE = 5
 
 export const usePhotoSession = defineStore('photoSession', () => {
   const folder = ref('')
@@ -15,6 +18,7 @@ export const usePhotoSession = defineStore('photoSession', () => {
   const error = ref<string | null>(null)
   const currentSrc = ref<string | null>(null)
   const thumbnails = ref<Record<string, string>>({})
+  const fullImages = new Map<string, string>()
 
   const currentPhoto = computed<PhotoInfo | null>(() => photos.value[index.value] ?? null)
   const total = computed(() => photos.value.length)
@@ -32,33 +36,59 @@ export const usePhotoSession = defineStore('photoSession', () => {
     currentPhoto.value ? (decisions.value[currentPhoto.value.name] ?? null) : null,
   )
 
+  function cacheFull(name: string, src: string) {
+    fullImages.delete(name)
+    fullImages.set(name, src)
+    for (const oldest of fullImages.keys()) {
+      if (fullImages.size <= FULL_CACHE_SIZE) break
+      fullImages.delete(oldest)
+    }
+  }
+
+  async function loadFull(photo: PhotoInfo): Promise<string | null> {
+    const cached = fullImages.get(photo.name)
+    if (cached) {
+      cacheFull(photo.name, cached)
+      return cached
+    }
+    try {
+      const src = await invoke<string>('read_photo', { path: photo.path })
+      cacheFull(photo.name, src)
+      return src
+    } catch (e) {
+      error.value = String(e)
+      return null
+    }
+  }
+
   watch(
     currentPhoto,
     async (photo) => {
-      currentSrc.value = null
-      if (!photo) return
-      const cached = thumbnails.value[photo.name]
-      if (cached) {
-        currentSrc.value = cached
+      if (!photo) {
+        currentSrc.value = null
         return
       }
-      try {
-        const src = await invoke<string>('read_photo', { path: photo.path })
-        thumbnails.value[photo.name] = src
-        if (currentPhoto.value?.name === photo.name) currentSrc.value = src
-      } catch (e) {
-        error.value = String(e)
+      currentSrc.value = fullImages.get(photo.name) ?? null
+      const src = await loadFull(photo)
+      if (currentPhoto.value?.name === photo.name) currentSrc.value = src
+
+      const neighbours = [photos.value[index.value + 1], photos.value[index.value - 1]]
+      for (const neighbour of neighbours) {
+        if (neighbour && !fullImages.has(neighbour.name)) void loadFull(neighbour)
       }
     },
     { immediate: true },
   )
 
   async function loadThumbnail(name: string) {
-    if (thumbnails.value[name]) return
+    if (thumbnails.value[name] !== undefined) return
     const photo = photos.value.find((p) => p.name === name)
     if (!photo) return
+    thumbnails.value[name] = ''
     try {
-      thumbnails.value[name] = await invoke<string>('read_photo', { path: photo.path })
+      thumbnails.value[name] = await queued(() =>
+        invoke<string>('read_thumbnail', { path: photo.path }),
+      )
     } catch {
       thumbnails.value[name] = ''
     }
@@ -70,6 +100,7 @@ export const usePhotoSession = defineStore('photoSession', () => {
     decisions.value = {}
     history.value = []
     thumbnails.value = {}
+    fullImages.clear()
     try {
       const all = await invoke<PhotoInfo[]>('list_photos', { folder: targetFolder })
       const folderHistory = await getFolderHistory(targetFolder)

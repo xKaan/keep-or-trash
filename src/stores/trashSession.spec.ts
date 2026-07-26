@@ -20,7 +20,7 @@ beforeEach(() => {
   mockedInvoke.mockReset()
   mockedInvoke.mockImplementation(async (cmd: string) => {
     if (cmd === 'list_trash') return TRASHED
-    if (cmd === 'read_photo') return 'data:image/jpeg;base64,fake'
+    if (cmd === 'read_thumbnail') return 'data:image/jpeg;base64,thumb'
     if (cmd === 'delete_permanently') return 2
     return null
   })
