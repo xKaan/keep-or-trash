@@ -1,0 +1,17 @@
+@use 'ramps';
+@use 'theme';
+@use 'tokens';
+@use 'base';
+@use 'components';
+
+:root {
+  @include tokens.emit;
+  @include ramps.emit('neutral', ramps.$neutral);
+  @include ramps.emit('accent', ramps.$accent);
+  @include ramps.emit('accent-2', ramps.$accent-2);
+  @include theme.emit(dark);
+
+  &[data-theme='light'] {
+    @include theme.emit(light);
+  }
+}

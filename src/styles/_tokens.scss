@@ -1,0 +1,37 @@
+$space: (
+  1: 2.8px,
+  2: 5.6px,
+  3: 8.4px,
+  4: 11.2px,
+  6: 16.8px,
+  8: 22.4px,
+);
+
+$radius: (
+  sm: 4px,
+  md: 8px,
+  lg: 14px,
+);
+
+$fonts: (
+  --font-heading: ('Inter', system-ui, sans-serif),
+  --font-heading-weight: 500,
+  --font-body: ('Inter', system-ui, sans-serif),
+  --font-mono: (ui-monospace, 'Cascadia Mono', 'Consolas', monospace),
+);
+
+@mixin emit {
+  @each $step, $value in $space {
+    --space-#{$step}: #{$value};
+  }
+  @each $step, $value in $radius {
+    --radius-#{$step}: #{$value};
+  }
+  @each $property, $value in $fonts {
+    #{$property}: #{$value};
+  }
+
+  --color-accent: #9184d9;
+  --color-accent-2: #a7a1db;
+  --color-danger: oklch(70% 0.11 25);
+}

@@ -1,0 +1,34 @@
+@use 'sass:map';
+
+$themes: (
+  dark: (
+    --color-bg: #161826,
+    --color-surface: #232532,
+    --color-text: #e9e9ed,
+    --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent),
+    --shadow-sm: (0 0 0 1px #3f424d),
+    --shadow-md: (0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55)),
+    --shadow-lg: (0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65)),
+    --tint-accent: var(--color-accent-900),
+    --tint-accent-text: var(--color-accent-200),
+    --tint-neutral: var(--color-neutral-900),
+  ),
+  light: (
+    --color-bg: #f2f1f8,
+    --color-surface: #ffffff,
+    --color-text: #1d1e2a,
+    --color-divider: color-mix(in srgb, #1d1e2a 14%, transparent),
+    --shadow-sm: (0 0 0 1px #e4e7f5),
+    --shadow-md: (0 0 0 1px #cfd3e5, 0 6px 18px rgba(30, 30, 45, 0.12)),
+    --shadow-lg: (0 0 0 1px #b2b6ca, 0 16px 40px rgba(30, 30, 45, 0.16)),
+    --tint-accent: var(--color-accent-100),
+    --tint-accent-text: var(--color-accent-700),
+    --tint-neutral: var(--color-neutral-100),
+  ),
+);
+
+@mixin emit($name) {
+  @each $property, $value in map.get($themes, $name) {
+    #{$property}: #{$value};
+  }
+}
