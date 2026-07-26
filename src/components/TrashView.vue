@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useTrashSession } from '../stores/trashSession'
-import { useTheme } from '../composables/useTheme'
 import AppIcon from './AppIcon.vue'
 import PhotoThumb from './PhotoThumb.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import ThemeButton from './ThemeButton.vue'
 
 const props = defineProps<{ folder: string }>()
-const emit = defineEmits<{ back: [] }>()
+const emit = defineEmits<{ back: []; settings: [] }>()
 
 const trash = useTrashSession()
-const { theme, toggleTheme } = useTheme()
 
 type Pending = { names: string[]; scope: 'one' | 'selection' | 'all' }
 
@@ -80,12 +79,13 @@ onMounted(() => trash.load(props.folder))
         </span>
         <button
           class="btn btn-round"
-          title="Changer de thème"
-          aria-label="Changer de thème"
-          @click="toggleTheme"
+          title="Paramètres"
+          aria-label="Paramètres"
+          @click="emit('settings')"
         >
-          <AppIcon :name="theme === 'light' ? 'sun' : 'moon'" />
+          <AppIcon name="settings" />
         </button>
+        <ThemeButton />
       </div>
     </header>
 
@@ -256,12 +256,12 @@ onMounted(() => trash.load(props.folder))
 }
 
 .trash-grid {
-  --thumb-intrinsic-height: 143px;
+  --thumb-intrinsic-height: var(--thumb-grid-intrinsic);
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-grid-min), 1fr));
   gap: var(--space-4);
   align-content: start;
 }

@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePhotoSession } from '../stores/photoSession'
-import { useTheme } from '../composables/useTheme'
+import { useSettings } from '../composables/useSettings'
+import { SHORTCUT_ACTIONS, normalizeKey, type ShortcutAction } from '../lib/settings'
 import AppIcon from './AppIcon.vue'
 import PhotoThumb from './PhotoThumb.vue'
+import ThemeButton from './ThemeButton.vue'
 
 const props = defineProps<{ folder: string }>()
-const emit = defineEmits<{ back: []; trash: [] }>()
+const emit = defineEmits<{ back: []; trash: []; settings: [] }>()
 
 const session = usePhotoSession()
-const { theme, toggleTheme } = useTheme()
+const { settings } = useSettings()
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2.5
@@ -59,6 +61,12 @@ function zoomOut() {
   zoom.value = clamp(zoom.value - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
 }
 
+const ZOOM_KEYS: Record<string, () => void> = {
+  '+': zoomIn,
+  '=': zoomIn,
+  '-': zoomOut,
+}
+
 function onWheel(event: WheelEvent) {
   if (!event.deltaY) return
   const step = event.deltaY < 0 ? 1 : -1
@@ -80,23 +88,22 @@ function rotateRight() {
 
 function onKeydown(event: KeyboardEvent) {
   if (event.target instanceof HTMLInputElement) return
-  const actions: Record<string, () => void> = {
-    ArrowLeft: session.goPrev,
-    ArrowRight: session.goNext,
-    k: () => session.decide('keep'),
-    K: () => session.decide('keep'),
-    d: () => session.decide('trash'),
-    D: () => session.decide('trash'),
-    Delete: () => session.decide('trash'),
-    Backspace: () => session.undo(),
-    '+': zoomIn,
-    '=': zoomIn,
-    '-': zoomOut,
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  const key = normalizeKey(event.key)
+
+  const handlers: Record<ShortcutAction, () => void> = {
+    prev: () => session.goPrev(),
+    next: () => session.goNext(),
+    keep: () => session.decide('keep'),
+    trash: () => session.decide('trash'),
+    undo: () => session.undo(),
   }
-  const action = actions[event.key]
-  if (!action) return
+
+  const action = SHORTCUT_ACTIONS.find((candidate) => settings.value.shortcuts[candidate] === key)
+  const run = action ? handlers[action] : ZOOM_KEYS[key]
+  if (!run) return
   event.preventDefault()
-  action()
+  run()
 }
 
 onMounted(() => {
@@ -115,6 +122,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <div class="text-muted text-mono sort-path" :title="session.folder">{{ session.folder }}</div>
       <div class="sort-header-end">
         <span v-if="session.total" class="tag tag-neutral">{{ session.progress }}</span>
+        <button
+          class="btn btn-secondary sort-change"
+          title="Paramètres"
+          aria-label="Paramètres"
+          @click="emit('settings')"
+        >
+          <AppIcon name="settings" :size="15" />
+        </button>
         <button class="btn btn-secondary sort-change" @click="emit('trash')">
           <AppIcon name="trash" :size="15" />
           Corbeille
@@ -233,14 +248,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             Annuler
           </button>
 
-          <button
-            class="btn btn-round sort-theme"
-            title="Changer de thème"
-            aria-label="Changer de thème"
-            @click="toggleTheme"
-          >
-            <AppIcon :name="theme === 'light' ? 'sun' : 'moon'" />
-          </button>
+          <ThemeButton class="sort-theme" />
         </footer>
       </div>
     </div>
@@ -317,13 +325,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 }
 
 .sort-rail {
-  --thumb-intrinsic-height: 92px;
-  width: 268px;
+  --thumb-intrinsic-height: var(--thumb-rail-intrinsic);
+  width: var(--thumb-rail-width);
   flex: none;
   overflow-y: auto;
   padding: var(--space-4) var(--space-3);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--thumb-rail-columns), minmax(0, 1fr));
   gap: var(--space-2);
   align-content: start;
   border-right: 1px solid var(--color-divider);

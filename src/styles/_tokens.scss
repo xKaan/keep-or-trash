@@ -1,3 +1,5 @@
+@use 'sass:map';
+
 $space: (
   1: 2.8px,
   2: 5.6px,
@@ -19,6 +21,36 @@ $fonts: (
   --font-body: ('Inter', system-ui, sans-serif),
   --font-mono: (ui-monospace, 'Cascadia Mono', 'Consolas', monospace),
 );
+
+$thumb-sizes: (
+  small: (
+    --thumb-rail-width: 208px,
+    --thumb-rail-columns: 2,
+    --thumb-rail-intrinsic: 69px,
+    --thumb-grid-min: 150px,
+    --thumb-grid-intrinsic: 113px,
+  ),
+  medium: (
+    --thumb-rail-width: 268px,
+    --thumb-rail-columns: 2,
+    --thumb-rail-intrinsic: 92px,
+    --thumb-grid-min: 190px,
+    --thumb-grid-intrinsic: 143px,
+  ),
+  large: (
+    --thumb-rail-width: 300px,
+    --thumb-rail-columns: 1,
+    --thumb-rail-intrinsic: 206px,
+    --thumb-grid-min: 260px,
+    --thumb-grid-intrinsic: 195px,
+  ),
+);
+
+@mixin emit-thumb-size($size) {
+  @each $property, $value in map.get($thumb-sizes, $size) {
+    #{$property}: #{$value};
+  }
+}
 
 @mixin emit {
   @each $step, $value in $space {

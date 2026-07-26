@@ -4,7 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { getRecentFolders } from '../lib/persistence'
 import AppIcon from './AppIcon.vue'
 
-const emit = defineEmits<{ select: [folder: string] }>()
+const emit = defineEmits<{ select: [folder: string]; settings: [] }>()
 
 const recentFolders = ref<string[]>([])
 const folderPath = ref('')
@@ -30,6 +30,15 @@ function openTyped() {
 
 <template>
   <main class="screen-centered">
+    <button
+      class="btn btn-round picker-settings"
+      title="Paramètres"
+      aria-label="Paramètres"
+      @click="emit('settings')"
+    >
+      <AppIcon name="settings" />
+    </button>
+
     <div class="card elev-lg picker">
       <div class="picker-badge">
         <AppIcon name="folder" :size="30" :stroke-width="1.6" />
@@ -73,6 +82,12 @@ function openTyped() {
 </template>
 
 <style scoped>
+.picker-settings {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
 .picker {
   width: 420px;
   max-width: calc(100vw - var(--space-8));

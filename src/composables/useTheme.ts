@@ -1,29 +1,55 @@
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { DEFAULT_THEME, parseTheme, resolveTheme, type Theme, type ResolvedTheme } from '../lib/settings'
 
-export type Theme = 'dark' | 'light'
+export type { Theme, ResolvedTheme }
 
 const STORAGE_KEY = 'keep-or-trash:theme'
+const DARK_QUERY = '(prefers-color-scheme: dark)'
+const THEME_ORDER: Theme[] = ['dark', 'light', 'system']
 
-function initialTheme(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return stored === 'light' || stored === 'dark' ? stored : 'dark'
+function readStoredTheme(): Theme {
+  try {
+    return parseTheme(localStorage.getItem(STORAGE_KEY))
+  } catch {
+    return DEFAULT_THEME
+  }
 }
 
-const theme = ref<Theme>(initialTheme())
+const darkQuery = window.matchMedia(DARK_QUERY)
+const theme = ref<Theme>(readStoredTheme())
+const prefersDark = ref(darkQuery.matches)
+
+darkQuery.addEventListener('change', (event) => {
+  prefersDark.value = event.matches
+})
+
+const resolvedTheme = computed<ResolvedTheme>(() => resolveTheme(theme.value, prefersDark.value))
 
 watch(
-  theme,
+  resolvedTheme,
   (value) => {
     document.documentElement.dataset.theme = value
-    localStorage.setItem(STORAGE_KEY, value)
   },
   { immediate: true },
 )
 
+watch(theme, (value) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, value)
+  } catch {
+    return
+  }
+})
+
 export function useTheme() {
-  function toggleTheme() {
-    theme.value = theme.value === 'dark' ? 'light' : 'dark'
+  function setTheme(value: Theme) {
+    theme.value = value
   }
 
-  return { theme, toggleTheme }
+  function cycleTheme() {
+    const index = THEME_ORDER.indexOf(theme.value)
+    theme.value = THEME_ORDER[(index + 1) % THEME_ORDER.length]
+  }
+
+  return { theme, resolvedTheme, setTheme, cycleTheme }
 }
