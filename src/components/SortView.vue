@@ -14,14 +14,21 @@ const { theme, toggleTheme } = useTheme()
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2.5
 const ZOOM_STEP = 0.25
+const ZOOM_WHEEL_STEP = 0.1
+
+const FRAME_MIN = 0.6
+const FRAME_MAX = 1.2
+const FRAME_WHEEL_STEP = 0.06
 
 const zoom = ref(1)
+const frameScale = ref(1)
 const rotation = ref(0)
 
 const zoomText = computed(() => `${Math.round(zoom.value * 100)}%`)
-const photoStyle = computed(() => ({
-  transform: `scale(${zoom.value}) rotate(${rotation.value}deg)`,
-}))
+const photoStyle = computed(() => ({ transform: `scale(${zoom.value})` }))
+const frameStyle = computed(() => ({ transform: `rotate(${rotation.value}deg)` }))
+const quarterTurned = computed(() => rotation.value % 180 !== 0)
+const stageStyle = computed(() => ({ '--frame-scale': String(frameScale.value) }))
 
 const sizeText = computed(() => {
   const size = session.currentPhoto?.size
@@ -40,12 +47,27 @@ watch(
   },
 )
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, +value.toFixed(2)))
+}
+
 function zoomIn() {
-  zoom.value = Math.min(ZOOM_MAX, +(zoom.value + ZOOM_STEP).toFixed(2))
+  zoom.value = clamp(zoom.value + ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
 }
 
 function zoomOut() {
-  zoom.value = Math.max(ZOOM_MIN, +(zoom.value - ZOOM_STEP).toFixed(2))
+  zoom.value = clamp(zoom.value - ZOOM_STEP, ZOOM_MIN, ZOOM_MAX)
+}
+
+function onWheel(event: WheelEvent) {
+  if (!event.deltaY) return
+  const step = event.deltaY < 0 ? 1 : -1
+  const insideCard = event.target instanceof Element && event.target.closest('.sort-frame')
+  if (insideCard) {
+    zoom.value = clamp(zoom.value + step * ZOOM_WHEEL_STEP, ZOOM_MIN, ZOOM_MAX)
+  } else {
+    frameScale.value = clamp(frameScale.value + step * FRAME_WHEEL_STEP, FRAME_MIN, FRAME_MAX)
+  }
 }
 
 function rotateLeft() {
@@ -125,9 +147,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       </nav>
 
       <div class="sort-main">
-        <div class="sort-stage">
+        <div class="sort-stage" :style="stageStyle" @wheel.prevent="onWheel">
           <button
-            class="btn btn-round sort-nav sort-nav-prev"
+            class="btn btn-round sort-nav"
             :disabled="session.index === 0"
             aria-label="Photo précédente"
             @click="session.goPrev()"
@@ -135,35 +157,38 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             <AppIcon name="chevronLeft" :size="18" />
           </button>
 
-          <div class="sort-viewer">
-            <div class="sort-frame">
-              <img
-                v-if="session.currentSrc"
-                :src="session.currentSrc"
-                :alt="session.currentPhoto?.name"
-                :style="photoStyle"
-                class="sort-photo"
-              />
-              <div v-else class="sort-photo-loading text-muted">Chargement de l'image…</div>
-            </div>
-            <div class="sort-meta text-muted">
-              <span class="sort-meta-name text-mono">{{ session.currentPhoto?.name }}</span>
-              <span>{{ sizeText }}</span>
-              <span v-if="session.currentDecision === 'keep'" class="tag tag-accent">Gardée</span>
-              <span v-else-if="session.currentDecision === 'trash'" class="tag sort-tag-trashed">
-                À la corbeille
-              </span>
-            </div>
+          <div
+            class="sort-frame"
+            :class="{ 'sort-frame-turned': quarterTurned }"
+            :style="frameStyle"
+          >
+            <img
+              v-if="session.currentSrc"
+              :src="session.currentSrc"
+              :alt="session.currentPhoto?.name"
+              :style="photoStyle"
+              class="sort-photo"
+            />
+            <div v-else class="sort-photo-loading text-muted">Chargement de l'image…</div>
           </div>
 
           <button
-            class="btn btn-round sort-nav sort-nav-next"
+            class="btn btn-round sort-nav"
             :disabled="session.index >= session.total - 1"
             aria-label="Photo suivante"
             @click="session.goNext()"
           >
             <AppIcon name="chevronRight" :size="18" />
           </button>
+
+          <div class="sort-meta text-muted">
+            <span class="sort-meta-name text-mono">{{ session.currentPhoto?.name }}</span>
+            <span>{{ sizeText }}</span>
+            <span v-if="session.currentDecision === 'keep'" class="tag tag-accent">Gardée</span>
+            <span v-else-if="session.currentDecision === 'trash'" class="tag sort-tag-trashed">
+              À la corbeille
+            </span>
+          </div>
 
           <div class="sort-zoom">
             <button class="btn btn-icon sort-zoom-btn" aria-label="Dézoomer" @click="zoomOut">
@@ -312,53 +337,49 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 }
 
 .sort-stage {
+  --meta-strip: 46px;
+  --nav-lane: 100px;
+  --stage-w: calc(70vw - var(--nav-lane));
+  --stage-h: calc(60vh - var(--meta-strip));
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-4);
   position: relative;
   padding: var(--space-6);
+  padding-bottom: var(--meta-strip);
   min-height: 0;
 }
 
 .sort-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  flex: none;
   z-index: 1;
 }
 
-.sort-nav-prev {
-  left: 20px;
-}
-
-.sort-nav-next {
-  right: 20px;
-}
-
-.sort-viewer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  max-width: 100%;
-  min-height: 0;
-}
-
 .sort-frame {
+  --frame-w: calc(var(--stage-w) * var(--frame-scale, 1));
+  --frame-h: calc(var(--stage-h) * var(--frame-scale, 1));
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  max-width: 70vw;
+  max-width: var(--frame-w);
+  min-width: 0;
   min-height: 0;
+  transition: transform 0.2s ease;
+}
+
+.sort-frame-turned {
+  --frame-w: calc(min(var(--stage-w), var(--stage-h)) * var(--frame-scale, 1));
+  --frame-h: var(--frame-w);
 }
 
 .sort-photo {
-  max-width: 70vw;
-  max-height: 60vh;
+  max-width: var(--frame-w);
+  max-height: var(--frame-h);
   object-fit: contain;
   transition: transform 0.15s ease;
 }
@@ -366,13 +387,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 .sort-photo-loading {
   display: grid;
   place-items: center;
-  width: 40vw;
-  height: 40vh;
+  width: calc(40vw * var(--frame-scale, 1));
+  height: calc(40vh * var(--frame-scale, 1));
   font-size: 13px;
   background: var(--color-surface);
 }
 
 .sort-meta {
+  position: absolute;
+  bottom: var(--space-3);
+  left: var(--space-6);
+  right: var(--space-6);
   display: flex;
   align-items: center;
   gap: var(--space-3);
