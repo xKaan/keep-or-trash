@@ -1,0 +1,121 @@
+{
+  "common": {
+    "settings": "Settings",
+    "loading": "Loading…",
+    "sizeMb": "{size} MB",
+    "sizeKb": "{size} KB"
+  },
+  "picker": {
+    "title": "Sort a folder's photos",
+    "lead": "Choose a folder to review its photos: keep the good ones, send the rest to the trash.",
+    "folderLabel": "Folder",
+    "folderPlaceholder": "C:\\Users\\...\\Pictures",
+    "chooseFolder": "Choose a folder",
+    "recentFolders": "Recent folders"
+  },
+  "sort": {
+    "title": "Sorting photos",
+    "trashButton": "Trash",
+    "changeFolder": "Change folder",
+    "empty": "No photos to sort here.",
+    "railLabel": "Folder photos",
+    "previousPhoto": "Previous photo",
+    "nextPhoto": "Next photo",
+    "loadingImage": "Loading image…",
+    "kept": "Kept",
+    "trashed": "Trashed",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "rotateLeft": "Rotate left",
+    "rotateRight": "Rotate right",
+    "keep": "Keep",
+    "sendToTrash": "Send to trash",
+    "undo": "Undo"
+  },
+  "trash": {
+    "backToSort": "Back to sorting",
+    "title": "Trash",
+    "countTag": "{count} photo · {size} | {count} photos · {size}",
+    "emptyTitle": "Trash is empty",
+    "emptyHint": "Photos you send to trash while sorting show up here.",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "selectedCount": "{count} selected",
+    "deleteSelection": "Delete selection",
+    "emptyTrash": "Empty trash",
+    "restore": "Restore",
+    "delete": "Delete",
+    "confirmDeleteOneTitle": "Delete this photo?",
+    "confirmDeleteManyTitle": "Delete {count} photo? | Delete {count} photos?",
+    "confirmDeleteOneBody": "{name} will be permanently deleted from disk. This action cannot be undone.",
+    "confirmDeleteManyBody": "{target} will be permanently deleted from disk. This action cannot be undone.",
+    "confirmDeleteAllTarget": "The entire trash",
+    "selectionTarget": "{count} photo | {count} photos",
+    "confirmDeleteLabelMany": "Delete {count} photo | Delete {count} photos"
+  },
+  "confirm": {
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "settings": {
+    "title": "Settings",
+    "back": "Back",
+    "tabsLabel": "Settings sections",
+    "tabs": {
+      "general": "General",
+      "shortcuts": "Shortcuts"
+    },
+    "general": {
+      "themeTitle": "Theme",
+      "themeHint": "\"System\" follows Windows' light/dark setting and updates live.",
+      "themeLabels": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "themeAriaLabel": "Theme: {theme}",
+      "thumbSizeTitle": "Thumbnail size",
+      "thumbSizeHint": "Applies to the sorting screen's rail and the trash grid.",
+      "thumbSizeLabels": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "languageTitle": "Language",
+      "languageHint": "Changes all UI text immediately.",
+      "languageLabels": {
+        "en": "English",
+        "fr": "Français"
+      }
+    },
+    "shortcuts": {
+      "hint": "One key per action. Zoom (+ / −) and navigation (Tab, Esc) can't be reassigned.",
+      "actionLabels": {
+        "prev": "Previous photo",
+        "next": "Next photo",
+        "keep": "Keep",
+        "trash": "Send to trash",
+        "undo": "Undo",
+        "rotate": "Rotate"
+      },
+      "keyAriaLabel": "{action}: {key}",
+      "pressKey": "Press a key…",
+      "unassigned": "Unassigned",
+      "keyLabels": {
+        "ArrowLeft": "←",
+        "ArrowRight": "→",
+        "ArrowUp": "↑",
+        "ArrowDown": "↓",
+        "Backspace": "⌫",
+        "Delete": "Del",
+        "Enter": "Enter",
+        " ": "Space"
+      },
+      "reservedKeyNotice": "\"{key}\" is reserved by the app.",
+      "evictedNotice": "\"{key}\" was assigned to \"{action}\", which now has no shortcut.",
+      "resetNotice": "Shortcuts reset.",
+      "escToCancel": "Esc to cancel.",
+      "reset": "Reset"
+    }
+  }
+}

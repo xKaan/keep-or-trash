@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSettings } from '../../composables/useSettings'
 import {
   SHORTCUT_ACTIONS,
-  SHORTCUT_LABELS,
   formatKeyLabel,
   isModifierKey,
   isReservedKey,
@@ -11,7 +11,17 @@ import {
   type ShortcutAction,
 } from '../../lib/settings'
 
+const { t, tm } = useI18n()
 const { settings, setShortcut, resetShortcuts } = useSettings()
+
+const actionLabels = computed(
+  () => tm('settings.shortcuts.actionLabels') as unknown as Record<ShortcutAction, string>,
+)
+const keyLabels = computed(() => tm('settings.shortcuts.keyLabels') as unknown as Record<string, string>)
+
+function keyLabelFor(key: string | null): string {
+  return formatKeyLabel(key, keyLabels.value, t('settings.shortcuts.unassigned'))
+}
 
 const capturing = ref<ShortcutAction | null>(null)
 const notice = ref('')
@@ -33,17 +43,17 @@ function onCapture(event: KeyboardEvent) {
     return
   }
 
-  const label = formatKeyLabel(normalizeKey(event.key))
+  const label = keyLabelFor(normalizeKey(event.key))
 
   if (isReservedKey(event.key)) {
-    notice.value = `« ${label} » est réservée par l'application.`
+    notice.value = t('settings.shortcuts.reservedKeyNotice', { key: label })
     noticeIsError.value = true
     return
   }
 
   const evicted = setShortcut(action, event.key)
   notice.value = evicted
-    ? `« ${label} » était assignée à « ${SHORTCUT_LABELS[evicted]} », qui n'a plus de raccourci.`
+    ? t('settings.shortcuts.evictedNotice', { key: label, action: actionLabels.value[evicted] })
     : ''
   noticeIsError.value = false
   stopCapture()
@@ -65,7 +75,7 @@ function stopCapture() {
 function reset() {
   stopCapture()
   resetShortcuts()
-  notice.value = 'Raccourcis réinitialisés.'
+  notice.value = t('settings.shortcuts.resetNotice')
   noticeIsError.value = false
 }
 
@@ -74,23 +84,25 @@ onUnmounted(stopCapture)
 
 <template>
   <div class="shortcuts">
-    <p class="text-muted shortcuts-hint">
-      Une seule touche par action. Le zoom (+ / −) et la navigation (Tab, Échap) ne sont pas
-      réassignables.
-    </p>
+    <p class="text-muted shortcuts-hint">{{ t('settings.shortcuts.hint') }}</p>
 
     <ul class="shortcuts-list">
       <li v-for="action in SHORTCUT_ACTIONS" :key="action" class="shortcuts-row">
-        <span class="shortcuts-label">{{ SHORTCUT_LABELS[action] }}</span>
+        <span class="shortcuts-label">{{ actionLabels[action] }}</span>
         <button
           type="button"
           class="btn btn-secondary shortcuts-key"
           :class="{ 'shortcuts-key-capturing': capturing === action }"
-          :aria-label="`${SHORTCUT_LABELS[action]} : ${formatKeyLabel(settings.shortcuts[action])}`"
+          :aria-label="
+            t('settings.shortcuts.keyAriaLabel', {
+              action: actionLabels[action],
+              key: keyLabelFor(settings.shortcuts[action]),
+            })
+          "
           @click="capturing === action ? stopCapture() : startCapture(action)"
         >
-          <template v-if="capturing === action">Appuyez sur une touche…</template>
-          <template v-else>{{ formatKeyLabel(settings.shortcuts[action]) }}</template>
+          <template v-if="capturing === action">{{ t('settings.shortcuts.pressKey') }}</template>
+          <template v-else>{{ keyLabelFor(settings.shortcuts[action]) }}</template>
         </button>
       </li>
     </ul>
@@ -100,11 +112,13 @@ onUnmounted(stopCapture)
       :class="{ 'shortcuts-notice-error': noticeIsError && !!notice, 'text-muted': !notice }"
       aria-live="polite"
     >
-      {{ notice || (capturing ? 'Échap pour annuler.' : '') }}
+      {{ notice || (capturing ? t('settings.shortcuts.escToCancel') : '') }}
     </p>
 
     <div class="shortcuts-actions">
-      <button type="button" class="btn btn-secondary" @click="reset">Réinitialiser</button>
+      <button type="button" class="btn btn-secondary" @click="reset">
+        {{ t('settings.shortcuts.reset') }}
+      </button>
     </div>
   </div>
 </template>

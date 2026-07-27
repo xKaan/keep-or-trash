@@ -1,15 +1,21 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-withDefaults(
+const { t } = useI18n()
+
+const props = withDefaults(
   defineProps<{
     title: string
     body: string
     confirmLabel?: string
     cancelLabel?: string
   }>(),
-  { confirmLabel: 'Supprimer', cancelLabel: 'Annuler' },
+  { confirmLabel: undefined, cancelLabel: undefined },
 )
+
+const resolvedConfirmLabel = computed(() => props.confirmLabel ?? t('confirm.delete'))
+const resolvedCancelLabel = computed(() => props.cancelLabel ?? t('confirm.cancel'))
 
 const emit = defineEmits<{ confirm: []; cancel: [] }>()
 
@@ -37,9 +43,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown, true))
       <div class="dialog-body">{{ body }}</div>
       <div class="dialog-actions">
         <button ref="cancelButton" class="btn btn-secondary" @click="emit('cancel')">
-          {{ cancelLabel }}
+          {{ resolvedCancelLabel }}
         </button>
-        <button class="btn btn-danger" @click="emit('confirm')">{{ confirmLabel }}</button>
+        <button class="btn btn-danger" @click="emit('confirm')">{{ resolvedConfirmLabel }}</button>
       </div>
     </div>
   </div>

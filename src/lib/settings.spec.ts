@@ -36,6 +36,7 @@ describe('isReservedKey', () => {
   it('allows ordinary keys', () => {
     expect(isReservedKey('G')).toBe(false)
     expect(isReservedKey('Delete')).toBe(false)
+    expect(isReservedKey('r')).toBe(false)
   })
 })
 
@@ -50,17 +51,32 @@ describe('isModifierKey', () => {
 })
 
 describe('formatKeyLabel', () => {
+  const keyLabels = {
+    ArrowLeft: '←',
+    ArrowRight: '→',
+    Backspace: '⌫',
+    Delete: 'Del',
+    ' ': 'Space',
+  }
+  const unassigned = 'Unassigned'
+
   it('renders arrows and named keys', () => {
-    expect(formatKeyLabel('ArrowLeft')).toBe('←')
-    expect(formatKeyLabel('ArrowRight')).toBe('→')
-    expect(formatKeyLabel('Backspace')).toBe('⌫')
-    expect(formatKeyLabel(' ')).toBe('Espace')
-    expect(formatKeyLabel('Delete')).toBe('Suppr')
+    expect(formatKeyLabel('ArrowLeft', keyLabels, unassigned)).toBe('←')
+    expect(formatKeyLabel('ArrowRight', keyLabels, unassigned)).toBe('→')
+    expect(formatKeyLabel('Backspace', keyLabels, unassigned)).toBe('⌫')
+    expect(formatKeyLabel(' ', keyLabels, unassigned)).toBe('Space')
+    expect(formatKeyLabel('Delete', keyLabels, unassigned)).toBe('Del')
   })
 
   it('uppercases letters and marks unassigned actions', () => {
-    expect(formatKeyLabel('k')).toBe('K')
-    expect(formatKeyLabel(null)).toBe('Non assigné')
+    expect(formatKeyLabel('k', keyLabels, unassigned)).toBe('K')
+    expect(formatKeyLabel(null, keyLabels, unassigned)).toBe('Unassigned')
+  })
+})
+
+describe('DEFAULT_SHORTCUTS', () => {
+  it('binds rotate to r by default', () => {
+    expect(DEFAULT_SHORTCUTS.rotate).toBe('r')
   })
 })
 
@@ -144,6 +160,7 @@ describe('parseSettings', () => {
       'keep',
       'next',
       'prev',
+      'rotate',
       'trash',
       'undo',
     ])
@@ -152,5 +169,16 @@ describe('parseSettings', () => {
   it('ignores a non-object shortcuts field', () => {
     const parsed = parseSettings(JSON.stringify({ shortcuts: 'nope' }))
     expect(parsed.shortcuts).toEqual(DEFAULT_SHORTCUTS)
+  })
+})
+
+describe('parseSettings locale', () => {
+  it('defaults to en when missing or invalid', () => {
+    expect(parseSettings(null).locale).toBe('en')
+    expect(parseSettings(JSON.stringify({ locale: 'de' })).locale).toBe('en')
+  })
+
+  it('keeps a valid stored locale', () => {
+    expect(parseSettings(JSON.stringify({ locale: 'fr' })).locale).toBe('fr')
   })
 })

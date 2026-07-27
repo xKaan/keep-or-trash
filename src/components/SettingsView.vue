@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AppIcon from './AppIcon.vue'
 import GeneralSettings from './settings/GeneralSettings.vue'
 import ShortcutsSettings from './settings/ShortcutsSettings.vue'
 
 const emit = defineEmits<{ back: [] }>()
 
+const { t } = useI18n()
+
 type Tab = 'general' | 'shortcuts'
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'general', label: 'Général' },
-  { id: 'shortcuts', label: 'Raccourcis' },
-]
+const TABS = computed<{ id: Tab; label: string }[]>(() => [
+  { id: 'general', label: t('settings.tabs.general') },
+  { id: 'shortcuts', label: t('settings.tabs.shortcuts') },
+])
 
 const tab = ref<Tab>('general')
 </script>
@@ -21,14 +24,14 @@ const tab = ref<Tab>('general')
     <header class="settings-header">
       <button type="button" class="btn btn-secondary" @click="emit('back')">
         <AppIcon name="chevronLeft" :size="15" />
-        Retour
+        {{ t('settings.back') }}
       </button>
       <div class="settings-sep"></div>
-      <div class="settings-title">Paramètres</div>
+      <div class="settings-title">{{ t('settings.title') }}</div>
     </header>
 
     <div class="settings-body">
-      <nav class="settings-tabs" aria-label="Sections des paramètres">
+      <nav class="settings-tabs" :aria-label="t('settings.tabsLabel')">
         <button
           v-for="entry in TABS"
           :key="entry.id"

@@ -1,27 +1,21 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useTheme } from '../../composables/useTheme'
 import { useSettings } from '../../composables/useSettings'
-import {
-  THEMES,
-  THUMB_SIZES,
-  THEME_LABELS,
-  THEME_ICONS,
-  THUMB_SIZE_LABELS,
-} from '../../lib/settings'
+import { THEMES, THUMB_SIZES, LOCALES, THEME_ICONS, type Locale } from '../../lib/settings'
 import AppIcon from '../AppIcon.vue'
 
+const { t } = useI18n()
 const { theme, setTheme } = useTheme()
-const { settings, setThumbSize } = useSettings()
+const { settings, setThumbSize, setLocale } = useSettings()
 </script>
 
 <template>
   <div class="general">
     <section class="general-section">
-      <h3 class="general-title">Thème</h3>
-      <p class="text-muted general-hint">
-        « Système » suit le réglage clair/sombre de Windows et s'adapte en direct.
-      </p>
-      <div class="segmented" role="group" aria-label="Thème">
+      <h3 class="general-title">{{ t('settings.general.themeTitle') }}</h3>
+      <p class="text-muted general-hint">{{ t('settings.general.themeHint') }}</p>
+      <div class="segmented" role="group" :aria-label="t('settings.general.themeTitle')">
         <button
           v-for="value in THEMES"
           :key="value"
@@ -32,7 +26,7 @@ const { settings, setThumbSize } = useSettings()
           @click="setTheme(value)"
         >
           <AppIcon :name="THEME_ICONS[value]" :size="15" />
-          {{ THEME_LABELS[value] }}
+          {{ t(`settings.general.themeLabels.${value}`) }}
         </button>
       </div>
     </section>
@@ -40,11 +34,9 @@ const { settings, setThumbSize } = useSettings()
     <div class="hr"></div>
 
     <section class="general-section">
-      <h3 class="general-title">Taille des miniatures</h3>
-      <p class="text-muted general-hint">
-        S'applique au rail de l'écran de tri et à la grille de la corbeille.
-      </p>
-      <div class="segmented" role="group" aria-label="Taille des miniatures">
+      <h3 class="general-title">{{ t('settings.general.thumbSizeTitle') }}</h3>
+      <p class="text-muted general-hint">{{ t('settings.general.thumbSizeHint') }}</p>
+      <div class="segmented" role="group" :aria-label="t('settings.general.thumbSizeTitle')">
         <button
           v-for="value in THUMB_SIZES"
           :key="value"
@@ -54,7 +46,27 @@ const { settings, setThumbSize } = useSettings()
           :aria-pressed="settings.thumbSize === value"
           @click="setThumbSize(value)"
         >
-          {{ THUMB_SIZE_LABELS[value] }}
+          {{ t(`settings.general.thumbSizeLabels.${value}`) }}
+        </button>
+      </div>
+    </section>
+
+    <div class="hr"></div>
+
+    <section class="general-section">
+      <h3 class="general-title">{{ t('settings.general.languageTitle') }}</h3>
+      <p class="text-muted general-hint">{{ t('settings.general.languageHint') }}</p>
+      <div class="segmented" role="group" :aria-label="t('settings.general.languageTitle')">
+        <button
+          v-for="value in LOCALES"
+          :key="value"
+          type="button"
+          class="segmented-item"
+          :class="{ 'segmented-item-active': settings.locale === value }"
+          :aria-pressed="settings.locale === value"
+          @click="setLocale(value as Locale)"
+        >
+          {{ t(`settings.general.languageLabels.${value}`) }}
         </button>
       </div>
     </section>

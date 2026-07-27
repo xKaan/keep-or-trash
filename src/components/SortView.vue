@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePhotoSession } from '../stores/photoSession'
 import { useSettings } from '../composables/useSettings'
 import { SHORTCUT_ACTIONS, normalizeKey, type ShortcutAction } from '../lib/settings'
@@ -10,6 +11,7 @@ import ThemeButton from './ThemeButton.vue'
 const props = defineProps<{ folder: string }>()
 const emit = defineEmits<{ back: []; trash: []; settings: [] }>()
 
+const { t } = useI18n()
 const session = usePhotoSession()
 const { settings } = useSettings()
 
@@ -37,8 +39,8 @@ const sizeText = computed(() => {
   if (size === undefined) return ''
   const mo = size / 1_000_000
   return mo >= 1
-    ? `${mo.toFixed(1).replace('.', ',')} Mo`
-    : `${Math.max(1, Math.round(size / 1000))} ko`
+    ? t('common.sizeMb', { size: mo.toFixed(1).replace('.', ',') })
+    : t('common.sizeKb', { size: Math.max(1, Math.round(size / 1000)) })
 })
 
 watch(
@@ -97,6 +99,7 @@ function onKeydown(event: KeyboardEvent) {
     keep: () => session.decide('keep'),
     trash: () => session.decide('trash'),
     undo: () => session.undo(),
+    rotate: () => rotateRight(),
   }
 
   const action = SHORTCUT_ACTIONS.find((candidate) => settings.value.shortcuts[candidate] === key)
@@ -117,38 +120,38 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 <template>
   <main class="sort">
     <header class="sort-header">
-      <div class="sort-title">Tri des photos</div>
+      <div class="sort-title">{{ t('sort.title') }}</div>
       <div class="sort-sep"></div>
       <div class="text-muted text-mono sort-path" :title="session.folder">{{ session.folder }}</div>
       <div class="sort-header-end">
         <span v-if="session.total" class="tag tag-neutral">{{ session.progress }}</span>
         <button
           class="btn btn-secondary sort-change"
-          title="Paramètres"
-          aria-label="Paramètres"
+          :title="t('common.settings')"
+          :aria-label="t('common.settings')"
           @click="emit('settings')"
         >
           <AppIcon name="settings" :size="15" />
         </button>
         <button class="btn btn-secondary sort-change" @click="emit('trash')">
           <AppIcon name="trash" :size="15" />
-          Corbeille
+          {{ t('sort.trashButton') }}
           <span v-if="session.trashedCount" class="tag tag-accent sort-trash-count">
             {{ session.trashedCount }}
           </span>
         </button>
         <button class="btn btn-secondary sort-change" @click="emit('back')">
-          Changer de dossier
+          {{ t('sort.changeFolder') }}
         </button>
       </div>
     </header>
 
-    <p v-if="session.loading" class="sort-state text-muted">Chargement…</p>
+    <p v-if="session.loading" class="sort-state text-muted">{{ t('common.loading') }}</p>
     <p v-else-if="session.error" class="sort-state sort-error">{{ session.error }}</p>
-    <p v-else-if="!session.total" class="sort-state text-muted">Aucune photo à trier ici.</p>
+    <p v-else-if="!session.total" class="sort-state text-muted">{{ t('sort.empty') }}</p>
 
     <div v-else class="sort-body">
-      <nav class="sort-rail" aria-label="Photos du dossier">
+      <nav class="sort-rail" :aria-label="t('sort.railLabel')">
         <PhotoThumb
           v-for="(photo, i) in session.photos"
           :key="photo.name"
@@ -166,7 +169,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <button
             class="btn btn-round sort-nav"
             :disabled="session.index === 0"
-            aria-label="Photo précédente"
+            :aria-label="t('sort.previousPhoto')"
             @click="session.goPrev()"
           >
             <AppIcon name="chevronLeft" :size="18" />
@@ -184,13 +187,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
               :style="photoStyle"
               class="sort-photo"
             />
-            <div v-else class="sort-photo-loading text-muted">Chargement de l'image…</div>
+            <div v-else class="sort-photo-loading text-muted">{{ t('sort.loadingImage') }}</div>
           </div>
 
           <button
             class="btn btn-round sort-nav"
             :disabled="session.index >= session.total - 1"
-            aria-label="Photo suivante"
+            :aria-label="t('sort.nextPhoto')"
             @click="session.goNext()"
           >
             <AppIcon name="chevronRight" :size="18" />
@@ -199,18 +202,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <div class="sort-meta text-muted">
             <span class="sort-meta-name text-mono">{{ session.currentPhoto?.name }}</span>
             <span>{{ sizeText }}</span>
-            <span v-if="session.currentDecision === 'keep'" class="tag tag-accent">Gardée</span>
+            <span v-if="session.currentDecision === 'keep'" class="tag tag-accent">{{ t('sort.kept') }}</span>
             <span v-else-if="session.currentDecision === 'trash'" class="tag sort-tag-trashed">
-              À la corbeille
+              {{ t('sort.trashed') }}
             </span>
           </div>
 
           <div class="sort-zoom">
-            <button class="btn btn-icon sort-zoom-btn" aria-label="Dézoomer" @click="zoomOut">
+            <button class="btn btn-icon sort-zoom-btn" :aria-label="t('sort.zoomOut')" @click="zoomOut">
               <AppIcon name="zoomOut" :size="15" />
             </button>
             <span class="text-muted sort-zoom-text">{{ zoomText }}</span>
-            <button class="btn btn-icon sort-zoom-btn" aria-label="Zoomer" @click="zoomIn">
+            <button class="btn btn-icon sort-zoom-btn" :aria-label="t('sort.zoomIn')" @click="zoomIn">
               <AppIcon name="zoomIn" :size="15" />
             </button>
           </div>
@@ -218,10 +221,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
         <footer class="sort-actions">
           <div class="sort-rotate">
-            <button class="btn btn-secondary" title="Pivoter à gauche" @click="rotateLeft">
+            <button class="btn btn-secondary" :title="t('sort.rotateLeft')" @click="rotateLeft">
               <AppIcon name="rotateLeft" />
             </button>
-            <button class="btn btn-secondary" title="Pivoter à droite" @click="rotateRight">
+            <button class="btn btn-secondary" :title="t('sort.rotateRight')" @click="rotateRight">
               <AppIcon name="rotateRight" />
             </button>
           </div>
@@ -234,7 +237,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             @click="session.decide('keep')"
           >
             <AppIcon name="check" :size="17" :stroke-width="2" />
-            Garder
+            {{ t('sort.keep') }}
           </button>
           <button
             class="btn btn-danger sort-decide"
@@ -242,10 +245,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             @click="session.decide('trash')"
           >
             <AppIcon name="trash" :size="17" />
-            Envoyer à la corbeille
+            {{ t('sort.sendToTrash') }}
           </button>
           <button class="btn btn-secondary" :disabled="!session.canUndo" @click="session.undo()">
-            Annuler
+            {{ t('sort.undo') }}
           </button>
 
           <ThemeButton class="sort-theme" />

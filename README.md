@@ -4,7 +4,7 @@ A desktop app to sort a folder of photos one at a time. Each picture gets a sing
 
 Built with [Tauri v2](https://tauri.app) (Rust backend) and Vue 3 + TypeScript.
 
-> The user interface is in French.
+> The user interface is available in English and French (Settings → General).
 
 ## How it works
 

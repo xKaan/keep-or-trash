@@ -1,0 +1,121 @@
+{
+  "common": {
+    "settings": "Paramètres",
+    "loading": "Chargement…",
+    "sizeMb": "{size} Mo",
+    "sizeKb": "{size} ko"
+  },
+  "picker": {
+    "title": "Trier les photos d'un dossier",
+    "lead": "Choisissez un dossier pour passer ses photos en revue : gardez les bonnes, envoyez les autres à la corbeille.",
+    "folderLabel": "Dossier",
+    "folderPlaceholder": "C:\\Utilisateurs\\…\\Images",
+    "chooseFolder": "Choisir un dossier",
+    "recentFolders": "Dossiers récents"
+  },
+  "sort": {
+    "title": "Tri des photos",
+    "trashButton": "Corbeille",
+    "changeFolder": "Changer de dossier",
+    "empty": "Aucune photo à trier ici.",
+    "railLabel": "Photos du dossier",
+    "previousPhoto": "Photo précédente",
+    "nextPhoto": "Photo suivante",
+    "loadingImage": "Chargement de l'image…",
+    "kept": "Gardée",
+    "trashed": "À la corbeille",
+    "zoomOut": "Dézoomer",
+    "zoomIn": "Zoomer",
+    "rotateLeft": "Pivoter à gauche",
+    "rotateRight": "Pivoter à droite",
+    "keep": "Garder",
+    "sendToTrash": "Envoyer à la corbeille",
+    "undo": "Annuler"
+  },
+  "trash": {
+    "backToSort": "Retour au tri",
+    "title": "Corbeille",
+    "countTag": "{count} photo · {size} | {count} photos · {size}",
+    "emptyTitle": "La corbeille est vide",
+    "emptyHint": "Les photos que vous envoyez à la corbeille pendant le tri arrivent ici.",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "selectedCount": "{count} sélectionnée | {count} sélectionnées",
+    "deleteSelection": "Supprimer la sélection",
+    "emptyTrash": "Vider la corbeille",
+    "restore": "Restaurer",
+    "delete": "Supprimer",
+    "confirmDeleteOneTitle": "Supprimer cette photo ?",
+    "confirmDeleteManyTitle": "Supprimer {count} photo ? | Supprimer {count} photos ?",
+    "confirmDeleteOneBody": "{name} sera supprimée définitivement du disque. Cette action est irréversible.",
+    "confirmDeleteManyBody": "{target} sera supprimée définitivement du disque. Cette action est irréversible.",
+    "confirmDeleteAllTarget": "Toute la corbeille",
+    "selectionTarget": "{count} photo | {count} photos",
+    "confirmDeleteLabelMany": "Supprimer {count} photo | Supprimer {count} photos"
+  },
+  "confirm": {
+    "cancel": "Annuler",
+    "delete": "Supprimer"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "back": "Retour",
+    "tabsLabel": "Sections des paramètres",
+    "tabs": {
+      "general": "Général",
+      "shortcuts": "Raccourcis"
+    },
+    "general": {
+      "themeTitle": "Thème",
+      "themeHint": "« Système » suit le réglage clair/sombre de Windows et s'adapte en direct.",
+      "themeLabels": {
+        "light": "Clair",
+        "dark": "Sombre",
+        "system": "Système"
+      },
+      "themeAriaLabel": "Thème : {theme}",
+      "thumbSizeTitle": "Taille des miniatures",
+      "thumbSizeHint": "S'applique au rail de l'écran de tri et à la grille de la corbeille.",
+      "thumbSizeLabels": {
+        "small": "Petit",
+        "medium": "Moyen",
+        "large": "Grand"
+      },
+      "languageTitle": "Langue",
+      "languageHint": "Change tout le texte de l'interface immédiatement.",
+      "languageLabels": {
+        "en": "English",
+        "fr": "Français"
+      }
+    },
+    "shortcuts": {
+      "hint": "Une seule touche par action. Le zoom (+ / −) et la navigation (Tab, Échap) ne sont pas réassignables.",
+      "actionLabels": {
+        "prev": "Photo précédente",
+        "next": "Photo suivante",
+        "keep": "Garder",
+        "trash": "Envoyer à la corbeille",
+        "undo": "Annuler",
+        "rotate": "Rotation"
+      },
+      "keyAriaLabel": "{action} : {key}",
+      "pressKey": "Appuyez sur une touche…",
+      "unassigned": "Non assigné",
+      "keyLabels": {
+        "ArrowLeft": "←",
+        "ArrowRight": "→",
+        "ArrowUp": "↑",
+        "ArrowDown": "↓",
+        "Backspace": "⌫",
+        "Delete": "Suppr",
+        "Enter": "Entrée",
+        " ": "Espace"
+      },
+      "reservedKeyNotice": "« {key} » est réservée par l'application.",
+      "evictedNotice": "« {key} » était assignée à « {action} », qui n'a plus de raccourci.",
+      "resetNotice": "Raccourcis réinitialisés.",
+      "escToCancel": "Échap pour annuler.",
+      "reset": "Réinitialiser"
+    }
+  }
+}

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { getRecentFolders } from '../lib/persistence'
 import AppIcon from './AppIcon.vue'
 
 const emit = defineEmits<{ select: [folder: string]; settings: [] }>()
+
+const { t } = useI18n()
 
 const recentFolders = ref<string[]>([])
 const folderPath = ref('')
@@ -32,8 +35,8 @@ function openTyped() {
   <main class="screen-centered">
     <button
       class="btn btn-round picker-settings"
-      title="Paramètres"
-      aria-label="Paramètres"
+      :title="t('common.settings')"
+      :aria-label="t('common.settings')"
       @click="emit('settings')"
     >
       <AppIcon name="settings" />
@@ -44,31 +47,28 @@ function openTyped() {
         <AppIcon name="folder" :size="30" :stroke-width="1.6" />
       </div>
 
-      <h2>Trier les photos d'un dossier</h2>
-      <p class="text-muted picker-lead">
-        Choisissez un dossier pour passer ses photos en revue : gardez les bonnes, envoyez les
-        autres à la corbeille.
-      </p>
+      <h2>{{ t('picker.title') }}</h2>
+      <p class="text-muted picker-lead">{{ t('picker.lead') }}</p>
 
       <div class="field picker-field">
-        <label for="folder-path">Dossier</label>
+        <label for="folder-path">{{ t('picker.folderLabel') }}</label>
         <input
           id="folder-path"
           v-model="folderPath"
           class="input text-mono picker-input"
-          placeholder="C:\Utilisateurs\…\Images"
+          :placeholder="t('picker.folderPlaceholder')"
           @keyup.enter="openTyped"
         />
       </div>
 
       <button class="btn btn-primary btn-block picker-cta" @click="pickFolder">
         <AppIcon name="folder" />
-        Choisir un dossier
+        {{ t('picker.chooseFolder') }}
       </button>
 
       <div v-if="recentFolders.length" class="picker-recent">
         <div class="hr"></div>
-        <h6 class="text-muted picker-recent-title">Dossiers récents</h6>
+        <h6 class="text-muted picker-recent-title">{{ t('picker.recentFolders') }}</h6>
         <ul class="picker-recent-list">
           <li v-for="folder in recentFolders" :key="folder">
             <button class="picker-recent-item text-mono" :title="folder" @click="emit('select', folder)">

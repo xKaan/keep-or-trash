@@ -3,10 +3,12 @@ import {
   DEFAULT_SHORTCUTS,
   assignShortcut,
   parseSettings,
+  type Locale,
   type Settings,
   type ShortcutAction,
   type ThumbSize,
 } from '../lib/settings'
+import { i18n } from '../i18n'
 
 const STORAGE_KEY = 'keep-or-trash:settings'
 
@@ -29,6 +31,14 @@ watch(
 )
 
 watch(
+  () => settings.value.locale,
+  (value) => {
+    i18n.global.locale.value = value
+  },
+  { immediate: true },
+)
+
+watch(
   settings,
   (value) => {
     try {
@@ -45,6 +55,10 @@ export function useSettings() {
     settings.value.thumbSize = value
   }
 
+  function setLocale(value: Locale) {
+    settings.value.locale = value
+  }
+
   function setShortcut(action: ShortcutAction, key: string): ShortcutAction | null {
     const result = assignShortcut(settings.value.shortcuts, action, key)
     settings.value.shortcuts = result.shortcuts
@@ -55,5 +69,5 @@ export function useSettings() {
     settings.value.shortcuts = { ...DEFAULT_SHORTCUTS }
   }
 
-  return { settings, setThumbSize, setShortcut, resetShortcuts }
+  return { settings, setThumbSize, setLocale, setShortcut, resetShortcuts }
 }

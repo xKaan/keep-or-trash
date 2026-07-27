@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTrashSession } from '../stores/trashSession'
 import AppIcon from './AppIcon.vue'
 import PhotoThumb from './PhotoThumb.vue'
@@ -9,6 +10,7 @@ import ThemeButton from './ThemeButton.vue'
 const props = defineProps<{ folder: string }>()
 const emit = defineEmits<{ back: []; settings: [] }>()
 
+const { t } = useI18n()
 const trash = useTrashSession()
 
 type Pending = { names: string[]; scope: 'one' | 'selection' | 'all' }
@@ -17,24 +19,34 @@ const pending = ref<Pending | null>(null)
 
 const sizeText = computed(() => {
   const mo = trash.totalSize / 1_000_000
-  return mo >= 1 ? `${mo.toFixed(1).replace('.', ',')} Mo` : `${Math.round(trash.totalSize / 1000)} ko`
+  return mo >= 1
+    ? t('common.sizeMb', { size: mo.toFixed(1).replace('.', ',') })
+    : t('common.sizeKb', { size: Math.round(trash.totalSize / 1000) })
 })
 
 const confirmTitle = computed(() => {
   if (!pending.value) return ''
   return pending.value.scope === 'one'
-    ? 'Supprimer cette photo ?'
-    : `Supprimer ${pending.value.names.length} photo(s) ?`
+    ? t('trash.confirmDeleteOneTitle')
+    : t('trash.confirmDeleteManyTitle', pending.value.names.length)
 })
 
 const confirmBody = computed(() => {
   if (!pending.value) return ''
   const { names, scope } = pending.value
   if (scope === 'one') {
-    return `${names[0]} sera supprimée définitivement du disque. Cette action est irréversible.`
+    return t('trash.confirmDeleteOneBody', { name: names[0] })
   }
-  const target = scope === 'all' ? 'Toute la corbeille' : `${names.length} photo(s)`
-  return `${target} sera supprimée définitivement du disque. Cette action est irréversible.`
+  const target =
+    scope === 'all' ? t('trash.confirmDeleteAllTarget') : t('trash.selectionTarget', names.length)
+  return t('trash.confirmDeleteManyBody', { target })
+})
+
+const confirmLabel = computed(() => {
+  if (!pending.value) return ''
+  return pending.value.scope === 'one'
+    ? t('confirm.delete')
+    : t('trash.confirmDeleteLabelMany', pending.value.names.length)
 })
 
 function askDeleteOne(name: string) {
@@ -68,19 +80,19 @@ onMounted(() => trash.load(props.folder))
     <header class="trash-header">
       <button class="btn btn-secondary" @click="emit('back')">
         <AppIcon name="chevronLeft" :size="15" />
-        Retour au tri
+        {{ t('trash.backToSort') }}
       </button>
       <div class="trash-sep"></div>
-      <div class="trash-title">Corbeille</div>
+      <div class="trash-title">{{ t('trash.title') }}</div>
       <div class="text-muted text-mono trash-path" :title="folder">{{ folder }}</div>
       <div class="trash-header-end">
         <span v-if="!trash.isEmpty" class="tag tag-neutral">
-          {{ trash.total }} photo(s) · {{ sizeText }}
+          {{ t('trash.countTag', { count: trash.total, size: sizeText }, trash.total) }}
         </span>
         <button
           class="btn btn-round"
-          title="Paramètres"
-          aria-label="Paramètres"
+          :title="t('common.settings')"
+          :aria-label="t('common.settings')"
           @click="emit('settings')"
         >
           <AppIcon name="settings" />
@@ -89,15 +101,15 @@ onMounted(() => trash.load(props.folder))
       </div>
     </header>
 
-    <p v-if="trash.loading" class="trash-state text-muted">Chargement…</p>
+    <p v-if="trash.loading" class="trash-state text-muted">{{ t('common.loading') }}</p>
     <p v-else-if="trash.error" class="trash-state trash-error">{{ trash.error }}</p>
 
     <div v-else-if="trash.isEmpty" class="trash-state trash-empty">
       <div class="trash-empty-badge">
         <AppIcon name="trash" :size="26" :stroke-width="1.6" />
       </div>
-      <h3>La corbeille est vide</h3>
-      <p class="text-muted">Les photos que vous envoyez à la corbeille pendant le tri arrivent ici.</p>
+      <h3>{{ t('trash.emptyTitle') }}</h3>
+      <p class="text-muted">{{ t('trash.emptyHint') }}</p>
     </div>
 
     <template v-else>
@@ -106,15 +118,17 @@ onMounted(() => trash.load(props.folder))
           class="btn btn-secondary"
           @click="trash.allSelected ? trash.clearSelection() : trash.selectAll()"
         >
-          {{ trash.allSelected ? 'Tout désélectionner' : 'Tout sélectionner' }}
+          {{ trash.allSelected ? t('trash.deselectAll') : t('trash.selectAll') }}
         </button>
-        <span class="text-muted trash-count">{{ trash.selected.length }} sélectionnée(s)</span>
+        <span class="text-muted trash-count">
+          {{ t('trash.selectedCount', { count: trash.selected.length }, trash.selected.length) }}
+        </span>
         <div class="trash-toolbar-end">
           <button class="btn btn-danger" :disabled="!trash.selected.length" @click="askDeleteSelected">
             <AppIcon name="trash" :size="15" />
-            Supprimer la sélection
+            {{ t('trash.deleteSelection') }}
           </button>
-          <button class="btn btn-danger" @click="askDeleteAll">Vider la corbeille</button>
+          <button class="btn btn-danger" @click="askDeleteAll">{{ t('trash.emptyTrash') }}</button>
         </div>
       </div>
 
@@ -130,10 +144,10 @@ onMounted(() => trash.load(props.folder))
           />
           <div class="trash-item-actions">
             <button class="btn btn-secondary trash-item-btn" @click="trash.restore(photo.name)">
-              Restaurer
+              {{ t('trash.restore') }}
             </button>
             <button class="btn btn-danger trash-item-btn" @click="askDeleteOne(photo.name)">
-              Supprimer
+              {{ t('trash.delete') }}
             </button>
           </div>
         </article>
@@ -144,7 +158,7 @@ onMounted(() => trash.load(props.folder))
       v-if="pending"
       :title="confirmTitle"
       :body="confirmBody"
-      :confirm-label="pending.scope === 'one' ? 'Supprimer' : `Supprimer ${pending.names.length} photo(s)`"
+      :confirm-label="confirmLabel"
       @confirm="confirm"
       @cancel="pending = null"
     />
