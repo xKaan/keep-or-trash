@@ -4,16 +4,18 @@ import { useI18n } from 'vue-i18n'
 import { usePhotoSession } from '../stores/photoSession'
 import { useSettings } from '../composables/useSettings'
 import { SHORTCUT_ACTIONS, normalizeKey, type ShortcutAction } from '../lib/settings'
+import { formatPhotoSize } from '../lib/format'
 import AppIcon from './AppIcon.vue'
 import PhotoThumb from './PhotoThumb.vue'
 import ThemeButton from './ThemeButton.vue'
+import ViewModeToggle from './ViewModeToggle.vue'
 
 const props = defineProps<{ folder: string }>()
 const emit = defineEmits<{ back: []; trash: []; settings: [] }>()
 
 const { t } = useI18n()
 const session = usePhotoSession()
-const { settings } = useSettings()
+const { settings, setViewMode, setThumbScale, setRailWidth } = useSettings()
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2.5
@@ -28,19 +30,59 @@ const zoom = ref(1)
 const frameScale = ref(1)
 const rotation = ref(0)
 
+const dragging = ref(false)
+let dragStartX = 0
+let dragStartRailWidth = 0
+let dragStartThumbScale = 0
+
+function onHandlePointerDown(event: PointerEvent) {
+  dragging.value = true
+  dragStartX = event.clientX
+  dragStartRailWidth = settings.value.railWidth
+  dragStartThumbScale = settings.value.thumbScale
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+}
+
+function onHandlePointerMove(event: PointerEvent) {
+  if (!dragging.value) return
+  const delta = event.clientX - dragStartX
+  if (settings.value.viewMode === 'list') {
+    setThumbScale(dragStartThumbScale + delta)
+  } else {
+    setRailWidth(dragStartRailWidth + delta)
+  }
+}
+
+function onHandlePointerUp(event: PointerEvent) {
+  dragging.value = false
+  const target = event.currentTarget as HTMLElement
+  if (target.hasPointerCapture(event.pointerId)) {
+    target.releasePointerCapture(event.pointerId)
+  }
+}
+
 const zoomText = computed(() => `${Math.round(zoom.value * 100)}%`)
 const photoStyle = computed(() => ({ transform: `scale(${zoom.value})` }))
 const frameStyle = computed(() => ({ transform: `rotate(${rotation.value}deg)` }))
 const quarterTurned = computed(() => rotation.value % 180 !== 0)
 const stageStyle = computed(() => ({ '--frame-scale': String(frameScale.value) }))
 
+function photoSizeText(bytes: number) {
+  const parts = formatPhotoSize(bytes)
+  return parts.unit === 'mb'
+    ? t('common.sizeMb', { size: parts.value })
+    : t('common.sizeKb', { size: parts.value })
+}
+
 const sizeText = computed(() => {
   const size = session.currentPhoto?.size
-  if (size === undefined) return ''
-  const mo = size / 1_000_000
-  return mo >= 1
-    ? t('common.sizeMb', { size: mo.toFixed(1).replace('.', ',') })
-    : t('common.sizeKb', { size: Math.max(1, Math.round(size / 1000)) })
+  return size === undefined ? '' : photoSizeText(size)
+})
+
+const railLayout = computed<'card' | 'row' | 'dense'>(() => {
+  if (settings.value.viewMode === 'list') return 'row'
+  if (settings.value.viewMode === 'dense') return 'dense'
+  return 'card'
 })
 
 watch(
@@ -125,6 +167,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       <div class="text-muted text-mono sort-path" :title="session.folder">{{ session.folder }}</div>
       <div class="sort-header-end">
         <span v-if="session.total" class="tag tag-neutral">{{ session.progress }}</span>
+        <ViewModeToggle :current="settings.viewMode" @select="setViewMode" />
         <button
           class="btn btn-secondary sort-change"
           :title="t('common.settings')"
@@ -151,7 +194,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
     <p v-else-if="!session.total" class="sort-state text-muted">{{ t('sort.empty') }}</p>
 
     <div v-else class="sort-body">
-      <nav class="sort-rail" :aria-label="t('sort.railLabel')">
+      <nav
+        class="sort-rail"
+        :class="`sort-rail-${settings.viewMode}`"
+        :aria-label="t('sort.railLabel')"
+      >
         <PhotoThumb
           v-for="(photo, i) in session.photos"
           :key="photo.name"
@@ -159,10 +206,23 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           :src="session.thumbnails[photo.name] || undefined"
           :decision="session.decisions[photo.name] ?? null"
           :active="i === session.index"
+          :layout="railLayout"
+          :size-text="railLayout === 'row' ? photoSizeText(photo.size) : undefined"
           @select="session.selectPhoto(i)"
           @visible="session.loadThumbnail(photo.name)"
         />
       </nav>
+
+      <div
+        class="sort-rail-handle"
+        role="separator"
+        aria-orientation="vertical"
+        :aria-label="t('display.resizeRailLabel')"
+        @pointerdown="onHandlePointerDown"
+        @pointermove="onHandlePointerMove"
+        @pointerup="onHandlePointerUp"
+        @pointercancel="onHandlePointerUp"
+      ></div>
 
       <div class="sort-main">
         <div class="sort-stage" :style="stageStyle" @wheel.prevent="onWheel">
@@ -328,16 +388,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 }
 
 .sort-rail {
-  --thumb-intrinsic-height: var(--thumb-rail-intrinsic);
-  width: var(--thumb-rail-width);
+  --thumb-intrinsic-height: calc(var(--thumb-scale) * 0.75);
+  width: var(--rail-width);
   flex: none;
   overflow-y: auto;
   padding: var(--space-4) var(--space-3);
   display: grid;
-  grid-template-columns: repeat(var(--thumb-rail-columns), minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--thumb-scale), 100%), 1fr));
   gap: var(--space-2);
   align-content: start;
-  border-right: 1px solid var(--color-divider);
 }
 
 .sort-main {
@@ -486,5 +545,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 .sort-theme {
   position: absolute;
   right: var(--space-4);
+}
+
+.sort-rail-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sort-rail-handle {
+  flex: none;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  border-right: 1px solid var(--color-divider);
+}
+
+.sort-rail-handle:hover,
+.sort-rail-handle:active {
+  background: var(--tint-accent);
 }
 </style>

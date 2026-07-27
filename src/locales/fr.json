@@ -53,6 +53,16 @@
     "selectionTarget": "{count} photo | {count} photos",
     "confirmDeleteLabelMany": "Supprimer {count} photo | Supprimer {count} photos"
   },
+  "display": {
+    "modeLabel": "Affichage",
+    "modes": {
+      "cards": "Cartes",
+      "list": "Liste",
+      "dense": "Dense"
+    },
+    "resizeRailLabel": "Glisser pour redimensionner",
+    "resizeSliderLabel": "Taille des miniatures"
+  },
   "confirm": {
     "cancel": "Annuler",
     "delete": "Supprimer"
@@ -74,13 +84,6 @@
         "system": "Système"
       },
       "themeAriaLabel": "Thème : {theme}",
-      "thumbSizeTitle": "Taille des miniatures",
-      "thumbSizeHint": "S'applique au rail de l'écran de tri et à la grille de la corbeille.",
-      "thumbSizeLabels": {
-        "small": "Petit",
-        "medium": "Moyen",
-        "large": "Grand"
-      },
       "languageTitle": "Langue",
       "languageHint": "Change tout le texte de l'interface immédiatement.",
       "languageLabels": {

@@ -2,11 +2,13 @@ import { ref, watch } from 'vue'
 import {
   DEFAULT_SHORTCUTS,
   assignShortcut,
+  clampRailWidth,
+  clampThumbScale,
   parseSettings,
   type Locale,
   type Settings,
   type ShortcutAction,
-  type ThumbSize,
+  type ViewMode,
 } from '../lib/settings'
 import { i18n } from '../i18n'
 
@@ -23,9 +25,17 @@ function readStoredSettings(): Settings {
 const settings = ref<Settings>(readStoredSettings())
 
 watch(
-  () => settings.value.thumbSize,
+  () => settings.value.thumbScale,
   (value) => {
-    document.documentElement.dataset.thumbSize = value
+    document.documentElement.style.setProperty('--thumb-scale', `${value}px`)
+  },
+  { immediate: true },
+)
+
+watch(
+  () => settings.value.railWidth,
+  (value) => {
+    document.documentElement.style.setProperty('--rail-width', `${value}px`)
   },
   { immediate: true },
 )
@@ -38,21 +48,34 @@ watch(
   { immediate: true },
 )
 
+let persistTimer: ReturnType<typeof setTimeout> | undefined
+
 watch(
   settings,
   (value) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
-    } catch {
-      return
-    }
+    if (persistTimer) clearTimeout(persistTimer)
+    persistTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+      } catch {
+        return
+      }
+    }, 100)
   },
   { deep: true },
 )
 
 export function useSettings() {
-  function setThumbSize(value: ThumbSize) {
-    settings.value.thumbSize = value
+  function setViewMode(value: ViewMode) {
+    settings.value.viewMode = value
+  }
+
+  function setThumbScale(value: number) {
+    settings.value.thumbScale = clampThumbScale(value)
+  }
+
+  function setRailWidth(value: number) {
+    settings.value.railWidth = clampRailWidth(value)
   }
 
   function setLocale(value: Locale) {
@@ -69,5 +92,13 @@ export function useSettings() {
     settings.value.shortcuts = { ...DEFAULT_SHORTCUTS }
   }
 
-  return { settings, setThumbSize, setLocale, setShortcut, resetShortcuts }
+  return {
+    settings,
+    setViewMode,
+    setThumbScale,
+    setRailWidth,
+    setLocale,
+    setShortcut,
+    resetShortcuts,
+  }
 }

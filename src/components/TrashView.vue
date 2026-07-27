@@ -2,16 +2,21 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTrashSession } from '../stores/trashSession'
+import { useSettings } from '../composables/useSettings'
+import { THUMB_SCALE_MAX, THUMB_SCALE_MIN } from '../lib/settings'
+import { formatPhotoSize } from '../lib/format'
 import AppIcon from './AppIcon.vue'
 import PhotoThumb from './PhotoThumb.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import ThemeButton from './ThemeButton.vue'
+import ViewModeToggle from './ViewModeToggle.vue'
 
 const props = defineProps<{ folder: string }>()
 const emit = defineEmits<{ back: []; settings: [] }>()
 
 const { t } = useI18n()
 const trash = useTrashSession()
+const { settings, setViewMode, setThumbScale } = useSettings()
 
 type Pending = { names: string[]; scope: 'one' | 'selection' | 'all' }
 
@@ -23,6 +28,23 @@ const sizeText = computed(() => {
     ? t('common.sizeMb', { size: mo.toFixed(1).replace('.', ',') })
     : t('common.sizeKb', { size: Math.round(trash.totalSize / 1000) })
 })
+
+const gridLayout = computed<'card' | 'row' | 'dense'>(() => {
+  if (settings.value.viewMode === 'list') return 'row'
+  if (settings.value.viewMode === 'dense') return 'dense'
+  return 'card'
+})
+
+function photoSizeText(bytes: number) {
+  const parts = formatPhotoSize(bytes)
+  return parts.unit === 'mb'
+    ? t('common.sizeMb', { size: parts.value })
+    : t('common.sizeKb', { size: parts.value })
+}
+
+function onScaleInput(event: Event) {
+  setThumbScale(Number((event.target as HTMLInputElement).value))
+}
 
 const confirmTitle = computed(() => {
   if (!pending.value) return ''
@@ -89,6 +111,7 @@ onMounted(() => trash.load(props.folder))
         <span v-if="!trash.isEmpty" class="tag tag-neutral">
           {{ t('trash.countTag', { count: trash.total, size: sizeText }, trash.total) }}
         </span>
+        <ViewModeToggle :current="settings.viewMode" @select="setViewMode" />
         <button
           class="btn btn-round"
           :title="t('common.settings')"
@@ -124,6 +147,15 @@ onMounted(() => trash.load(props.folder))
           {{ t('trash.selectedCount', { count: trash.selected.length }, trash.selected.length) }}
         </span>
         <div class="trash-toolbar-end">
+          <input
+            type="range"
+            class="thumb-slider"
+            :min="THUMB_SCALE_MIN"
+            :max="THUMB_SCALE_MAX"
+            :value="settings.thumbScale"
+            :aria-label="t('display.resizeSliderLabel')"
+            @input="onScaleInput"
+          />
           <button class="btn btn-danger" :disabled="!trash.selected.length" @click="askDeleteSelected">
             <AppIcon name="trash" :size="15" />
             {{ t('trash.deleteSelection') }}
@@ -132,13 +164,15 @@ onMounted(() => trash.load(props.folder))
         </div>
       </div>
 
-      <div class="trash-grid">
+      <div class="trash-grid" :class="`trash-grid-${settings.viewMode}`">
         <article v-for="photo in trash.photos" :key="photo.name" class="trash-item">
           <PhotoThumb
             :name="photo.name"
             :src="trash.thumbnails[photo.name] || undefined"
             :decision="null"
             :active="trash.selected.includes(photo.name)"
+            :layout="gridLayout"
+            :size-text="gridLayout === 'row' ? photoSizeText(photo.size) : undefined"
             @select="trash.toggle(photo.name)"
             @visible="trash.loadThumbnail(photo.name)"
           />
@@ -270,12 +304,12 @@ onMounted(() => trash.load(props.folder))
 }
 
 .trash-grid {
-  --thumb-intrinsic-height: var(--thumb-grid-intrinsic);
+  --thumb-intrinsic-height: calc(var(--thumb-scale) * 0.75);
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-grid-min), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-scale), 1fr));
   gap: var(--space-4);
   align-content: start;
 }
@@ -294,5 +328,29 @@ onMounted(() => trash.load(props.folder))
 .trash-item-btn {
   flex: 1;
   font-size: 13px;
+}
+
+.trash-grid-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.trash-grid-list .trash-item {
+  flex-direction: row;
+  align-items: center;
+}
+
+.trash-grid-list .trash-item-actions {
+  flex: none;
+}
+
+.trash-grid-list .trash-item-btn {
+  flex: none;
+}
+
+.thumb-slider {
+  width: 140px;
+  accent-color: var(--color-accent);
 }
 </style>

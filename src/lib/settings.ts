@@ -1,12 +1,14 @@
 export type Theme = 'dark' | 'light' | 'system'
 export type ResolvedTheme = 'dark' | 'light'
-export type ThumbSize = 'small' | 'medium' | 'large'
+export type ViewMode = 'cards' | 'list' | 'dense'
 export type Locale = 'en' | 'fr'
 export type ShortcutAction = 'prev' | 'next' | 'keep' | 'trash' | 'undo' | 'rotate'
 export type Shortcuts = Record<ShortcutAction, string | null>
 
 export interface Settings {
-  thumbSize: ThumbSize
+  viewMode: ViewMode
+  thumbScale: number
+  railWidth: number
   locale: Locale
   shortcuts: Shortcuts
 }
@@ -17,7 +19,7 @@ export interface AssignResult {
 }
 
 export const THEMES: Theme[] = ['light', 'dark', 'system']
-export const THUMB_SIZES: ThumbSize[] = ['small', 'medium', 'large']
+export const VIEW_MODES: ViewMode[] = ['cards', 'list', 'dense']
 export const LOCALES: Locale[] = ['en', 'fr']
 export const SHORTCUT_ACTIONS: ShortcutAction[] = ['prev', 'next', 'keep', 'trash', 'undo', 'rotate']
 
@@ -29,6 +31,25 @@ export const THEME_ICONS: Record<Theme, 'sun' | 'moon' | 'monitor'> = {
 
 export const DEFAULT_THEME: Theme = 'dark'
 export const DEFAULT_LOCALE: Locale = 'en'
+export const DEFAULT_VIEW_MODE: ViewMode = 'cards'
+
+export const THUMB_SCALE_MIN = 90
+export const THUMB_SCALE_MAX = 320
+export const DEFAULT_THUMB_SCALE = 190
+
+export const RAIL_WIDTH_MIN = 220
+export const RAIL_WIDTH_MAX = 480
+export const DEFAULT_RAIL_WIDTH = 410
+
+export function clampThumbScale(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_THUMB_SCALE
+  return Math.min(THUMB_SCALE_MAX, Math.max(THUMB_SCALE_MIN, value))
+}
+
+export function clampRailWidth(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_RAIL_WIDTH
+  return Math.min(RAIL_WIDTH_MAX, Math.max(RAIL_WIDTH_MIN, value))
+}
 
 export const DEFAULT_SHORTCUTS: Shortcuts = {
   prev: 'ArrowLeft',
@@ -40,7 +61,9 @@ export const DEFAULT_SHORTCUTS: Shortcuts = {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  thumbSize: 'medium',
+  viewMode: DEFAULT_VIEW_MODE,
+  thumbScale: DEFAULT_THUMB_SCALE,
+  railWidth: DEFAULT_RAIL_WIDTH,
   locale: DEFAULT_LOCALE,
   shortcuts: { ...DEFAULT_SHORTCUTS },
 }
@@ -112,9 +135,13 @@ export function parseSettings(raw: string | null): Settings {
   }
 
   return {
-    thumbSize: THUMB_SIZES.includes(source.thumbSize as ThumbSize)
-      ? (source.thumbSize as ThumbSize)
-      : DEFAULT_SETTINGS.thumbSize,
+    viewMode: VIEW_MODES.includes(source.viewMode as ViewMode)
+      ? (source.viewMode as ViewMode)
+      : DEFAULT_VIEW_MODE,
+    thumbScale:
+      typeof source.thumbScale === 'number' ? clampThumbScale(source.thumbScale) : DEFAULT_THUMB_SCALE,
+    railWidth:
+      typeof source.railWidth === 'number' ? clampRailWidth(source.railWidth) : DEFAULT_RAIL_WIDTH,
     locale: LOCALES.includes(source.locale as Locale) ? (source.locale as Locale) : DEFAULT_LOCALE,
     shortcuts,
   }

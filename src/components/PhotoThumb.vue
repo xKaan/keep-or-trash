@@ -3,12 +3,17 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import type { Decision } from '../types'
 import AppIcon from './AppIcon.vue'
 
-const props = defineProps<{
-  name: string
-  src: string | undefined
-  decision: Decision | null
-  active: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    name: string
+    src: string | undefined
+    decision: Decision | null
+    active: boolean
+    layout?: 'card' | 'row' | 'dense'
+    sizeText?: string
+  }>(),
+  { layout: 'card' },
+)
 
 const emit = defineEmits<{ select: []; visible: [] }>()
 
@@ -44,12 +49,27 @@ onUnmounted(() => observer?.disconnect())
   <button
     ref="root"
     class="thumb"
-    :class="{ 'thumb-active': active, 'thumb-trashed': decision === 'trash' }"
+    :class="[`thumb-${layout}`, { 'thumb-active': active, 'thumb-trashed': decision === 'trash' }]"
     :aria-current="active"
     :title="name"
     @click="emit('select')"
   >
-    <div class="thumb-frame">
+    <template v-if="layout === 'row'">
+      <div class="thumb-row-frame">
+        <img v-if="src" :src="src" :alt="name" class="thumb-row-img" decoding="async" />
+        <div v-else class="thumb-row-placeholder"></div>
+      </div>
+      <span class="thumb-row-name text-mono">{{ name }}</span>
+      <span v-if="sizeText" class="thumb-row-size text-muted">{{ sizeText }}</span>
+      <span v-if="decision === 'keep'" class="thumb-row-badge thumb-badge-keep">
+        <AppIcon name="check" :size="12" :stroke-width="2.4" />
+      </span>
+      <span v-else-if="decision === 'trash'" class="thumb-row-badge thumb-badge-trash">
+        <AppIcon name="close" :size="12" :stroke-width="2.4" />
+      </span>
+    </template>
+
+    <div v-else class="thumb-frame">
       <img v-if="src" :src="src" :alt="name" class="thumb-img" decoding="async" />
       <div v-else class="thumb-placeholder"></div>
 
@@ -60,7 +80,7 @@ onUnmounted(() => observer?.disconnect())
         <AppIcon name="close" :size="12" :stroke-width="2.4" />
       </span>
 
-      <span class="thumb-name text-mono">{{ name }}</span>
+      <span v-if="layout !== 'dense'" class="thumb-name text-mono">{{ name }}</span>
     </div>
   </button>
 </template>
@@ -161,5 +181,73 @@ onUnmounted(() => observer?.disconnect())
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.thumb-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+}
+
+.thumb-row:hover {
+  background: color-mix(in srgb, var(--color-text) 5%, transparent);
+}
+
+.thumb-row.thumb-active {
+  background: var(--tint-accent);
+  box-shadow: none;
+}
+
+.thumb-row-frame {
+  flex: none;
+  width: min(var(--thumb-scale), 45%);
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-neutral-900);
+}
+
+.thumb-row-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-row-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    115deg,
+    var(--color-neutral-900),
+    var(--color-neutral-800) 50%,
+    var(--color-neutral-900)
+  );
+}
+
+.thumb-row-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumb-row-size {
+  flex: none;
+  font-size: 12px;
+}
+
+.thumb-row-badge {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

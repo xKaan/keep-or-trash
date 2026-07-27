@@ -53,6 +53,16 @@
     "selectionTarget": "{count} photo | {count} photos",
     "confirmDeleteLabelMany": "Delete {count} photo | Delete {count} photos"
   },
+  "display": {
+    "modeLabel": "Display",
+    "modes": {
+      "cards": "Cards",
+      "list": "List",
+      "dense": "Dense"
+    },
+    "resizeRailLabel": "Drag to resize",
+    "resizeSliderLabel": "Thumbnail size"
+  },
   "confirm": {
     "cancel": "Cancel",
     "delete": "Delete"
@@ -74,13 +84,6 @@
         "system": "System"
       },
       "themeAriaLabel": "Theme: {theme}",
-      "thumbSizeTitle": "Thumbnail size",
-      "thumbSizeHint": "Applies to the sorting screen's rail and the trash grid.",
-      "thumbSizeLabels": {
-        "small": "Small",
-        "medium": "Medium",
-        "large": "Large"
-      },
       "languageTitle": "Language",
       "languageHint": "Changes all UI text immediately.",
       "languageLabels": {

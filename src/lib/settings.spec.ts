@@ -2,7 +2,16 @@ import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_SETTINGS,
   DEFAULT_SHORTCUTS,
+  DEFAULT_THUMB_SCALE,
+  DEFAULT_RAIL_WIDTH,
+  DEFAULT_VIEW_MODE,
+  RAIL_WIDTH_MAX,
+  RAIL_WIDTH_MIN,
+  THUMB_SCALE_MAX,
+  THUMB_SCALE_MIN,
   assignShortcut,
+  clampRailWidth,
+  clampThumbScale,
   formatKeyLabel,
   isModifierKey,
   isReservedKey,
@@ -131,6 +140,42 @@ describe('parseTheme', () => {
   })
 })
 
+describe('clampThumbScale', () => {
+  it('passes through values within range', () => {
+    expect(clampThumbScale(200)).toBe(200)
+  })
+
+  it('clamps below the minimum', () => {
+    expect(clampThumbScale(10)).toBe(THUMB_SCALE_MIN)
+  })
+
+  it('clamps above the maximum', () => {
+    expect(clampThumbScale(9999)).toBe(THUMB_SCALE_MAX)
+  })
+
+  it('falls back to the default for non-finite input', () => {
+    expect(clampThumbScale(NaN)).toBe(DEFAULT_THUMB_SCALE)
+  })
+})
+
+describe('clampRailWidth', () => {
+  it('passes through values within range', () => {
+    expect(clampRailWidth(300)).toBe(300)
+  })
+
+  it('clamps below the minimum', () => {
+    expect(clampRailWidth(10)).toBe(RAIL_WIDTH_MIN)
+  })
+
+  it('clamps above the maximum', () => {
+    expect(clampRailWidth(9999)).toBe(RAIL_WIDTH_MAX)
+  })
+
+  it('falls back to the default for non-finite input', () => {
+    expect(clampRailWidth(NaN)).toBe(DEFAULT_RAIL_WIDTH)
+  })
+})
+
 describe('parseSettings', () => {
   it('returns the defaults for null and for corrupt JSON', () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS)
@@ -139,14 +184,27 @@ describe('parseSettings', () => {
   })
 
   it('fills each missing field independently', () => {
-    const parsed = parseSettings(JSON.stringify({ thumbSize: 'large' }))
-    expect(parsed.thumbSize).toBe('large')
+    const parsed = parseSettings(JSON.stringify({ viewMode: 'list' }))
+    expect(parsed.viewMode).toBe('list')
     expect(parsed.shortcuts).toEqual(DEFAULT_SHORTCUTS)
   })
 
-  it('rejects out-of-range values', () => {
-    const parsed = parseSettings(JSON.stringify({ thumbSize: 'enormous' }))
-    expect(parsed.thumbSize).toBe('medium')
+  it('rejects an invalid view mode', () => {
+    const parsed = parseSettings(JSON.stringify({ viewMode: 'enormous' }))
+    expect(parsed.viewMode).toBe(DEFAULT_VIEW_MODE)
+  })
+
+  it('clamps an out-of-range stored thumbScale', () => {
+    const parsed = parseSettings(JSON.stringify({ thumbScale: 999999 }))
+    expect(parsed.thumbScale).toBe(THUMB_SCALE_MAX)
+  })
+
+  it('defaults thumbScale and railWidth when missing or not a number', () => {
+    expect(parseSettings(JSON.stringify({}))).toMatchObject({
+      thumbScale: DEFAULT_THUMB_SCALE,
+      railWidth: DEFAULT_RAIL_WIDTH,
+    })
+    expect(parseSettings(JSON.stringify({ thumbScale: 'big' })).thumbScale).toBe(DEFAULT_THUMB_SCALE)
   })
 
   it('keeps stored shortcuts, normalizes them, and honours null', () => {

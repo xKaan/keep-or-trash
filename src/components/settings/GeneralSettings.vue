@@ -2,12 +2,12 @@
 import { useI18n } from 'vue-i18n'
 import { useTheme } from '../../composables/useTheme'
 import { useSettings } from '../../composables/useSettings'
-import { THEMES, THUMB_SIZES, LOCALES, THEME_ICONS, type Locale } from '../../lib/settings'
+import { THEMES, LOCALES, THEME_ICONS, type Locale } from '../../lib/settings'
 import AppIcon from '../AppIcon.vue'
 
 const { t } = useI18n()
 const { theme, setTheme } = useTheme()
-const { settings, setThumbSize, setLocale } = useSettings()
+const { settings, setLocale } = useSettings()
 </script>
 
 <template>
@@ -27,26 +27,6 @@ const { settings, setThumbSize, setLocale } = useSettings()
         >
           <AppIcon :name="THEME_ICONS[value]" :size="15" />
           {{ t(`settings.general.themeLabels.${value}`) }}
-        </button>
-      </div>
-    </section>
-
-    <div class="hr"></div>
-
-    <section class="general-section">
-      <h3 class="general-title">{{ t('settings.general.thumbSizeTitle') }}</h3>
-      <p class="text-muted general-hint">{{ t('settings.general.thumbSizeHint') }}</p>
-      <div class="segmented" role="group" :aria-label="t('settings.general.thumbSizeTitle')">
-        <button
-          v-for="value in THUMB_SIZES"
-          :key="value"
-          type="button"
-          class="segmented-item"
-          :class="{ 'segmented-item-active': settings.thumbSize === value }"
-          :aria-pressed="settings.thumbSize === value"
-          @click="setThumbSize(value)"
-        >
-          {{ t(`settings.general.thumbSizeLabels.${value}`) }}
         </button>
       </div>
     </section>

@@ -6,7 +6,6 @@
 
 :root {
   @include tokens.emit;
-  @include tokens.emit-thumb-size(medium);
   @include ramps.emit('neutral', ramps.$neutral);
   @include ramps.emit('accent', ramps.$accent);
   @include ramps.emit('accent-2', ramps.$accent-2);
@@ -14,13 +13,5 @@
 
   &[data-theme='light'] {
     @include theme.emit(light);
-  }
-
-  &[data-thumb-size='small'] {
-    @include tokens.emit-thumb-size(small);
-  }
-
-  &[data-thumb-size='large'] {
-    @include tokens.emit-thumb-size(large);
   }
 }
